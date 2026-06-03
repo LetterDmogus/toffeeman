@@ -16,7 +16,7 @@ class PackageController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Package::with('menuItems');
+        $query = Package::with(['packageItems.menuItem', 'packageItems.inventoryItem']);
 
         if ($request->filled('search')) {
             $search = $request->string('search');
@@ -64,7 +64,7 @@ class PackageController extends BaseController
      */
     public function show(Package $package): JsonResponse
     {
-        return response()->json($package->load('menuItems'));
+        return response()->json($package->load(['packageItems.menuItem', 'packageItems.inventoryItem']));
     }
 
     /**
@@ -108,20 +108,21 @@ class PackageController extends BaseController
     {
         $request->validate([
             'items' => ['required', 'array'],
-            'items.*.menu_item_id' => ['required', 'exists:menu_items,id'],
             'items.*.qty' => ['required', 'integer', 'min:1'],
             'items.*.notes' => ['nullable', 'string'],
+            'items.*.menu_item_id' => ['nullable', 'exists:menu_items,id'],
+            'items.*.inventory_item_id' => ['nullable', 'exists:inventory_items,id'],
         ]);
 
-        $syncData = [];
+        $package->packageItems()->delete();
         foreach ($request->items as $item) {
-            $syncData[$item['menu_item_id']] = [
+            $package->packageItems()->create([
+                'menu_item_id' => $item['menu_item_id'] ?? null,
+                'inventory_item_id' => $item['inventory_item_id'] ?? null,
                 'qty' => $item['qty'],
-                'notes' => $item['notes'],
-            ];
+                'notes' => $item['notes'] ?? null,
+            ]);
         }
-
-        $package->menuItems()->sync($syncData);
 
         return response()->json(['message' => 'Items synced successfully.']);
     }

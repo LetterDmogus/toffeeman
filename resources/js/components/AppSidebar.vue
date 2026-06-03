@@ -15,7 +15,10 @@ import {
     Layers, 
     Users, 
     Contact, 
-    ShieldCheck 
+    ShieldCheck,
+    Carrot,
+    FolderClosed,
+    History
 } from 'lucide-vue-next';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -45,7 +48,10 @@ const catalogNavItems: NavItem[] = [
 
 const opsNavItems: NavItem[] = [
     { title: 'Meja', href: ops.tables().url, icon: Table2 },
-    { title: 'Inventaris', href: ops.inventory().url, icon: Boxes },
+    { title: 'Bahan Baku', href: ops.ingredients().url, icon: Carrot },
+    { title: 'Kategori Bahan', href: ops.ingredientCategories().url, icon: FolderClosed },
+    { title: 'Batch Bahan', href: ops.ingredientBatches().url, icon: History },
+    { title: 'Barang / Peralatan', href: ops.inventory().url, icon: Boxes },
     { title: 'Kategori Barang', href: ops.inventoryCategories().url, icon: Layers },
 ];
 

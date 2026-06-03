@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class InventoryItem extends Model
+class Ingredient extends Model
 {
     use SoftDeletes;
 
@@ -15,15 +15,12 @@ class InventoryItem extends Model
         'qty' => 'decimal:2',
         'min_qty' => 'decimal:2',
         'price' => 'decimal:2',
-        'purchase_date' => 'date',
-        'qty_good' => 'decimal:2',
-        'qty_fair' => 'decimal:2',
-        'qty_damaged' => 'decimal:2',
+        'small_unit_qty' => 'decimal:2',
     ];
 
     public function category()
     {
-        return $this->belongsTo(InventoryCategory::class, 'inventory_category_id');
+        return $this->belongsTo(IngredientCategory::class, 'ingredient_category_id');
     }
 
     public function creator()
@@ -31,11 +28,20 @@ class InventoryItem extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function batches()
+    {
+        return $this->hasMany(IngredientBatch::class);
+    }
+
+    public function recalculateQty(): void
+    {
+        $this->qty = $this->batches()->sum('qty');
+        $this->save();
+    }
+
     protected static function booted(): void
     {
-        static::saving(function (InventoryItem $item) {
-            $item->qty = ($item->qty_good ?? 0) + ($item->qty_fair ?? 0) + ($item->qty_damaged ?? 0);
-
+        static::saving(function (Ingredient $item) {
             if ($item->qty <= 0) {
                 $item->status = 'out_of_stock';
             } elseif ($item->qty <= $item->min_qty) {

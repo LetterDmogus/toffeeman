@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\InventoryItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class InventoryItemController extends BaseController
 {
@@ -15,7 +16,7 @@ class InventoryItemController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = InventoryItem::with('category');
+        $query = InventoryItem::with(['category', 'creator']);
 
         if ($request->filled('search')) {
             $search = $request->string('search');
@@ -51,12 +52,20 @@ class InventoryItemController extends BaseController
             'qty' => ['required', 'numeric', 'min:0'],
             'unit' => ['required', 'string', 'max:50'],
             'min_qty' => ['required', 'numeric', 'min:0'],
+            'purchase_date' => ['nullable', 'date'],
+            'qty_good' => ['required', 'numeric', 'min:0'],
+            'qty_fair' => ['required', 'numeric', 'min:0'],
+            'qty_damaged' => ['required', 'numeric', 'min:0'],
+            'storage_location' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
         ]);
 
+        $validated['slug'] = Str::slug($validated['name']);
+        $validated['created_by'] = auth()->id();
+
         $item = InventoryItem::create($validated);
 
-        return response()->json($item, 201);
+        return response()->json($item->load(['category', 'creator']), 201);
     }
 
     /**
@@ -64,7 +73,7 @@ class InventoryItemController extends BaseController
      */
     public function show(InventoryItem $inventoryItem): JsonResponse
     {
-        return response()->json($inventoryItem->load('category'));
+        return response()->json($inventoryItem->load(['category', 'creator']));
     }
 
     /**
@@ -80,12 +89,21 @@ class InventoryItemController extends BaseController
             'qty' => ['sometimes', 'numeric', 'min:0'],
             'unit' => ['sometimes', 'string', 'max:50'],
             'min_qty' => ['sometimes', 'numeric', 'min:0'],
+            'purchase_date' => ['nullable', 'date'],
+            'qty_good' => ['sometimes', 'numeric', 'min:0'],
+            'qty_fair' => ['sometimes', 'numeric', 'min:0'],
+            'qty_damaged' => ['sometimes', 'numeric', 'min:0'],
+            'storage_location' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
         ]);
 
+        if (isset($validated['name'])) {
+            $validated['slug'] = Str::slug($validated['name']);
+        }
+
         $inventoryItem->update($validated);
 
-        return response()->json($inventoryItem->fresh()->load('category'));
+        return response()->json($inventoryItem->fresh()->load(['category', 'creator']));
     }
 
     /**

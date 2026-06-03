@@ -23,4 +23,16 @@ class Package extends Model
             ->withPivot('qty', 'notes')
             ->withTimestamps();
     }
+
+    public function inventoryItems()
+    {
+        return $this->belongsToMany(InventoryItem::class, 'package_items')
+            ->withPivot('qty', 'notes')
+            ->withTimestamps();
+    }
+
+    public function packageItems()
+    {
+        return $this->hasMany(PackageItem::class);
+    }
 }

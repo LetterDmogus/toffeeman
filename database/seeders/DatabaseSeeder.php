@@ -3,11 +3,16 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
+use App\Models\Employee;
+use App\Models\Ingredient;
+use App\Models\IngredientBatch;
+use App\Models\IngredientCategory;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\MenuItem;
 use App\Models\Package;
 use App\Models\PackageItem;
+use App\Models\Position;
 use App\Models\Table;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -203,12 +208,140 @@ class DatabaseSeeder extends Seeder
             'notes' => 'Served with milk on the side',
         ]);
 
-        // Seed Inventory Categories
-        $invCategories = [
+        // Seed Ingredient Categories (Bahan Baku)
+        $ingCategories = [
             ['name' => 'Bahan Kering', 'slug' => 'bahan-kering', 'description' => 'Tepung, gula, dan bahan kering lainnya'],
             ['name' => 'Produk Susu & Telur', 'slug' => 'produk-susu-telur', 'description' => 'Susu, mentega, keju, dan telur segar'],
             ['name' => 'Buah & Sayuran', 'slug' => 'buah-sayuran', 'description' => 'Buah-buahan segar dan sayur-sayuran dapur'],
             ['name' => 'Teh & Kopi', 'slug' => 'teh-kopi', 'description' => 'Daun teh premium, biji kopi, dan sirup'],
+        ];
+
+        $ingCatMap = [];
+        foreach ($ingCategories as $ic) {
+            $ingCatMap[$ic['name']] = IngredientCategory::create($ic)->id;
+        }
+
+        // Seed Ingredients (Bahan Baku)
+        $ingredientsList = [
+            [
+                'name' => 'Tepung Terigu Segitiga Biru',
+                'slug' => 'tepung-terigu-segitiga-biru',
+                'sku' => 'ING-DRY-FLOUR-01',
+                'ingredient_category_id' => $ingCatMap['Bahan Kering'],
+                'qty' => 0.00, // calculated from batches
+                'unit' => 'kg',
+                'min_qty' => 10.00,
+                'price' => 12500.00,
+                'storage_temperature' => 'Suhu Ruang (25°C)',
+                'small_unit_qty' => 50000.00, // 50.000 gram
+                'description' => 'Tepung terigu protein sedang untuk scone dan kue.',
+                'created_by' => $admin->id,
+            ],
+            [
+                'name' => 'Mentega Anchor Unsalted',
+                'slug' => 'mentega-anchor-unsalted',
+                'sku' => 'ING-DAI-BUTTER-01',
+                'ingredient_category_id' => $ingCatMap['Produk Susu & Telur'],
+                'qty' => 0.00, // calculated from batches
+                'unit' => 'kg',
+                'min_qty' => 5.00,
+                'price' => 140000.00,
+                'storage_temperature' => 'Dingin (4°C)',
+                'small_unit_qty' => 15500.00,
+                'description' => 'Mentega premium import dari Selandia Baru.',
+                'created_by' => $admin->id,
+            ],
+            [
+                'name' => 'Strawberry Lokal Fresh',
+                'slug' => 'strawberry-lokal-fresh',
+                'sku' => 'ING-FRU-STRAW-01',
+                'ingredient_category_id' => $ingCatMap['Buah & Sayuran'],
+                'qty' => 0.00, // calculated from batches
+                'unit' => 'kg',
+                'min_qty' => 3.00,
+                'price' => 45000.00,
+                'storage_temperature' => 'Dingin (4°C)',
+                'small_unit_qty' => 25000.00,
+                'description' => 'Strawberry segar untuk jam scone dan garnish kue.',
+                'created_by' => $admin->id,
+            ],
+            [
+                'name' => 'Imperial Earl Grey Tea Leaves',
+                'slug' => 'imperial-earl-grey-tea-leaves',
+                'sku' => 'ING-TEA-EG-01',
+                'ingredient_category_id' => $ingCatMap['Teh & Kopi'],
+                'qty' => 0.00, // calculated from batches
+                'unit' => 'pack',
+                'min_qty' => 2.00,
+                'price' => 110000.00,
+                'storage_temperature' => 'Kering & Sejuk',
+                'small_unit_qty' => 8.00,
+                'description' => 'Daun teh Earl Grey premium impor.',
+                'created_by' => $admin->id,
+            ],
+            [
+                'name' => 'Gula Pasir Gulaku',
+                'slug' => 'gula-pasir-gulaku',
+                'sku' => 'ING-DRY-SUGAR-01',
+                'ingredient_category_id' => $ingCatMap['Bahan Kering'],
+                'qty' => 0.00, // calculated from batches
+                'unit' => 'kg',
+                'min_qty' => 5.00,
+                'price' => 16000.00,
+                'storage_temperature' => 'Suhu Ruang',
+                'small_unit_qty' => 0.00,
+                'description' => 'Gula pasir kristal putih murni.',
+                'created_by' => $admin->id,
+            ],
+        ];
+
+        $createdIngredients = [];
+        foreach ($ingredientsList as $ing) {
+            $createdIngredients[$ing['slug']] = Ingredient::create($ing);
+        }
+
+        // Seed Ingredient Batches
+        IngredientBatch::create([
+            'ingredient_id' => $createdIngredients['tepung-terigu-segitiga-biru']->id,
+            'batch_number' => 'BCH-FLR-001',
+            'qty' => 30.00,
+            'expiration_date' => '2026-12-31',
+            'created_by' => $admin->id,
+        ]);
+        IngredientBatch::create([
+            'ingredient_id' => $createdIngredients['tepung-terigu-segitiga-biru']->id,
+            'batch_number' => 'BCH-FLR-002',
+            'qty' => 20.00,
+            'expiration_date' => '2027-02-28',
+            'created_by' => $admin->id,
+        ]);
+        IngredientBatch::create([
+            'ingredient_id' => $createdIngredients['mentega-anchor-unsalted']->id,
+            'batch_number' => 'BCH-BTR-092',
+            'qty' => 15.50,
+            'expiration_date' => '2026-09-15',
+            'created_by' => $admin->id,
+        ]);
+        IngredientBatch::create([
+            'ingredient_id' => $createdIngredients['strawberry-lokal-fresh']->id,
+            'batch_number' => 'BCH-STR-010',
+            'qty' => 2.50,
+            'expiration_date' => '2026-06-10',
+            'created_by' => $admin->id,
+        ]);
+        IngredientBatch::create([
+            'ingredient_id' => $createdIngredients['imperial-earl-grey-tea-leaves']->id,
+            'batch_number' => 'BCH-TEA-992',
+            'qty' => 8.00,
+            'expiration_date' => '2027-06-01',
+            'created_by' => $admin->id,
+        ]);
+
+        // Seed Inventory Categories (Barang / Peralatan)
+        $invCategories = [
+            ['name' => 'Peralatan Makan', 'slug' => 'peralatan-makan', 'description' => 'Piring, cangkir, sendok, garpu, dll.'],
+            ['name' => 'Peralatan POS / Elektronik', 'slug' => 'peralatan-pos-elektronik', 'description' => 'Tablet kasir, printer thermal, scanner.'],
+            ['name' => 'Perlengkapan Kebersihan', 'slug' => 'perlengkapan-kebersihan', 'description' => 'Sapu, kain pel, cairan pembersih.'],
         ];
 
         $invCatMap = [];
@@ -216,67 +349,55 @@ class DatabaseSeeder extends Seeder
             $invCatMap[$ic['name']] = InventoryCategory::create($ic)->id;
         }
 
-        // Seed Inventory Items
+        // Seed Inventory Items (Barang / Peralatan)
         $invItems = [
             [
-                'name' => 'Tepung Terigu Segitiga Biru',
-                'slug' => 'tepung-terigu-segitiga-biru',
-                'sku' => 'INV-DRY-FLOUR-01',
-                'inventory_category_id' => $invCatMap['Bahan Kering'],
-                'qty' => 50.00,
-                'unit' => 'kg',
+                'name' => 'Piring Keramik Putih',
+                'slug' => 'piring-keramik-putih',
+                'sku' => 'INV-PLT-001',
+                'inventory_category_id' => $invCatMap['Peralatan Makan'],
+                'qty_good' => 45.00,
+                'qty_fair' => 5.00,
+                'qty_damaged' => 0.00,
+                'unit' => 'pcs',
                 'min_qty' => 10.00,
-                'status' => 'in_stock',
-                'price' => 12500.00,
-                'description' => 'Tepung terigu protein sedang untuk scone dan kue.',
+                'price' => 25000.00,
+                'purchase_date' => '2026-01-10',
+                'storage_location' => 'Rak Dapur Utama',
+                'description' => 'Piring keramik saji diameter 20cm.',
+                'created_by' => $admin->id,
             ],
             [
-                'name' => 'Mentega Anchor Unsalted',
-                'slug' => 'mentega-anchor-unsalted',
-                'sku' => 'INV-DAI-BUTTER-01',
-                'inventory_category_id' => $invCatMap['Produk Susu & Telur'],
-                'qty' => 15.50,
-                'unit' => 'kg',
-                'min_qty' => 5.00,
-                'status' => 'in_stock',
-                'price' => 140000.00,
-                'description' => 'Mentega premium import dari Selandia Baru.',
+                'name' => 'Cangkir Teh Keramik',
+                'slug' => 'cangkir-teh-keramik',
+                'sku' => 'INV-CUP-001',
+                'inventory_category_id' => $invCatMap['Peralatan Makan'],
+                'qty_good' => 25.00,
+                'qty_fair' => 3.00,
+                'qty_damaged' => 2.00,
+                'unit' => 'pcs',
+                'min_qty' => 15.00,
+                'price' => 18000.00,
+                'purchase_date' => '2026-02-15',
+                'storage_location' => 'Lemari Depan Kasir',
+                'description' => 'Cangkir teh bermotif bunga ala British.',
+                'created_by' => $admin->id,
             ],
             [
-                'name' => 'Strawberry Lokal Fresh',
-                'slug' => 'strawberry-lokal-fresh',
-                'sku' => 'INV-FRU-STRAW-01',
-                'inventory_category_id' => $invCatMap['Buah & Sayuran'],
-                'qty' => 2.50,
-                'unit' => 'kg',
-                'min_qty' => 3.00,
-                'status' => 'low_stock', // Qty (2.5) <= Min Qty (3.0)
-                'price' => 45000.00,
-                'description' => 'Strawberry segar untuk jam scone dan garnish kue.',
-            ],
-            [
-                'name' => 'Imperial Earl Grey Tea Leaves',
-                'slug' => 'imperial-earl-grey-tea-leaves',
-                'sku' => 'INV-TEA-EG-01',
-                'inventory_category_id' => $invCatMap['Teh & Kopi'],
-                'qty' => 8.00,
-                'unit' => 'pack',
-                'min_qty' => 2.00,
-                'status' => 'in_stock',
-                'price' => 110000.00,
-                'description' => 'Daun teh Earl Grey premium impor.',
-            ],
-            [
-                'name' => 'Gula Pasir Gulaku',
-                'slug' => 'gula-pasir-gulaku',
-                'sku' => 'INV-DRY-SUGAR-01',
-                'inventory_category_id' => $invCatMap['Bahan Kering'],
-                'qty' => 0.00,
-                'unit' => 'kg',
-                'min_qty' => 5.00,
-                'status' => 'out_of_stock', // Qty <= 0
-                'price' => 16000.00,
-                'description' => 'Gula pasir kristal putih murni.',
+                'name' => 'Tablet POS Samsung A7',
+                'slug' => 'tablet-pos-samsung-a7',
+                'sku' => 'INV-POS-TBL-01',
+                'inventory_category_id' => $invCatMap['Peralatan POS / Elektronik'],
+                'qty_good' => 2.00,
+                'qty_fair' => 0.00,
+                'qty_damaged' => 0.00,
+                'unit' => 'unit',
+                'min_qty' => 1.00,
+                'price' => 2400000.00,
+                'purchase_date' => '2026-03-01',
+                'storage_location' => 'Meja Kasir',
+                'description' => 'Tablet untuk aplikasi POS Kasir.',
+                'created_by' => $admin->id,
             ],
         ];
 
@@ -336,12 +457,12 @@ class DatabaseSeeder extends Seeder
                 'password' => $empData['password'],
                 'status' => $empData['status'],
             ]);
-            
+
             $user->assignRole($empData['role']);
 
-            $position = \App\Models\Position::where('slug', $empData['position_slug'])->first();
+            $position = Position::where('slug', $empData['position_slug'])->first();
 
-            \App\Models\Employee::create([
+            Employee::create([
                 'user_id' => $user->id,
                 'position_id' => $position ? $position->id : null,
                 'salary' => $empData['salary'],
