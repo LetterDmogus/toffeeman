@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\InventoryItem;
 use App\Models\MenuItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -53,6 +54,7 @@ class MenuItemController extends BaseController
             'price' => ['required', 'numeric', 'min:0'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
             'status' => ['required', 'in:available,sold_out,draft'],
+            'inventory_item_id' => ['nullable', 'integer', 'exists:inventory_items,id'],
             'image_url' => ['nullable', 'string'],
             'allergens' => ['nullable', 'array'],
             'tags' => ['nullable', 'array'],
@@ -68,6 +70,16 @@ class MenuItemController extends BaseController
             'options.*.values.*.name' => ['required', 'string'],
             'options.*.values.*.additional_price' => ['required', 'numeric', 'min:0'],
         ]);
+
+        if (($validated['status'] ?? null) === 'available' && ! empty($validated['inventory_item_id'])) {
+            $invItem = InventoryItem::find($validated['inventory_item_id']);
+            if ($invItem && $invItem->qty <= 0) {
+                return response()->json([
+                    'message' => 'Stok barang inventoris kosong. Menu tidak dapat diatur sebagai Tersedia.',
+                    'errors' => ['status' => ['Stok barang inventoris kosong.']],
+                ], 422);
+            }
+        }
 
         $itemData = collect($validated)->except(['add_on_ids', 'options'])->all();
         $itemData['slug'] = Str::slug($validated['name']);
@@ -118,6 +130,7 @@ class MenuItemController extends BaseController
             'price' => ['sometimes', 'numeric', 'min:0'],
             'category_id' => ['sometimes', 'integer', 'exists:categories,id'],
             'status' => ['sometimes', 'in:available,sold_out,draft'],
+            'inventory_item_id' => ['nullable', 'integer', 'exists:inventory_items,id'],
             'image_url' => ['nullable', 'string'],
             'allergens' => ['nullable', 'array'],
             'tags' => ['nullable', 'array'],
@@ -133,6 +146,19 @@ class MenuItemController extends BaseController
             'options.*.values.*.name' => ['required', 'string'],
             'options.*.values.*.additional_price' => ['required', 'numeric', 'min:0'],
         ]);
+
+        $newStatus = array_key_exists('status', $validated) ? $validated['status'] : $menuItem->status;
+        $newInvId = array_key_exists('inventory_item_id', $validated) ? $validated['inventory_item_id'] : $menuItem->inventory_item_id;
+
+        if ($newStatus === 'available' && ! empty($newInvId)) {
+            $invItem = InventoryItem::find($newInvId);
+            if ($invItem && $invItem->qty <= 0) {
+                return response()->json([
+                    'message' => 'Stok barang inventoris kosong. Menu tidak dapat diatur sebagai Tersedia.',
+                    'errors' => ['status' => ['Stok barang inventoris kosong.']],
+                ], 422);
+            }
+        }
 
         $itemData = collect($validated)->except(['add_on_ids', 'options'])->all();
 

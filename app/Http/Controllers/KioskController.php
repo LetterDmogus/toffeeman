@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\Package;
 use App\Models\Table;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -28,12 +30,12 @@ class KioskController extends Controller
             ->orderBy('name')
             ->get();
 
-        $packages = \App\Models\Package::with('menuItems')
+        $packages = Package::with(['packageItems.menuItem', 'packageItems.inventoryItem'])
             ->where('status', 'active')
             ->orderBy('name')
             ->get();
 
-        /** @var \App\Models\User|null $customer */
+        /** @var User|null $customer */
         $customer = auth()->user();
         $isCustomer = $customer && $customer->hasRole('customer');
 
@@ -54,7 +56,7 @@ class KioskController extends Controller
     {
         Table::where('qr_code', $token)->firstOrFail();
 
-        /** @var \App\Models\User $customer */
+        /** @var User $customer */
         $customer = auth()->user();
 
         abort_unless($customer && $customer->hasRole('customer'), 401);

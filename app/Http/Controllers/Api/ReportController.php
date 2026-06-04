@@ -16,12 +16,12 @@ class ReportController extends Controller
      */
     public function dashboard(Request $request): JsonResponse
     {
-        $startDate = $request->filled('start_date') 
-            ? Carbon::parse($request->string('start_date'))->startOfDay() 
+        $startDate = $request->filled('start_date')
+            ? Carbon::parse($request->string('start_date'))->startOfDay()
             : now()->subDays(30)->startOfDay();
-            
-        $endDate = $request->filled('end_date') 
-            ? Carbon::parse($request->string('end_date'))->endOfDay() 
+
+        $endDate = $request->filled('end_date')
+            ? Carbon::parse($request->string('end_date'))->endOfDay()
             : now()->endOfDay();
 
         // 1. KPI Aggregations
@@ -43,39 +43,55 @@ class ReportController extends Controller
         if ($isSingleDay) {
             $rawTrend = DB::table('transactions')
                 ->whereNull('deleted_at')
-                ->where('type', 'income')
                 ->whereBetween('transaction_date', [$startDate, $endDate])
-                ->selectRaw("HOUR(transaction_date) as hour, SUM(amount) as total")
+                ->selectRaw("HOUR(transaction_date) as hour,
+                             SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
+                             SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense")
                 ->groupBy('hour')
                 ->orderBy('hour')
                 ->get();
-                
-            $rawTrendMap = $rawTrend->pluck('total', 'hour')->toArray();
+
+            $rawTrendMap = [];
+            foreach ($rawTrend as $row) {
+                $rawTrendMap[$row->hour] = [
+                    'income' => (float) $row->income,
+                    'expense' => (float) $row->expense,
+                ];
+            }
             for ($h = 0; $h < 24; $h++) {
                 $trend[] = [
                     'label' => sprintf('%02d:00', $h),
-                    'total' => (float) ($rawTrendMap[$h] ?? 0),
+                    'income' => (float) ($rawTrendMap[$h]['income'] ?? 0),
+                    'expense' => (float) ($rawTrendMap[$h]['expense'] ?? 0),
                 ];
             }
         } else {
             $rawTrend = DB::table('transactions')
                 ->whereNull('deleted_at')
-                ->where('type', 'income')
                 ->whereBetween('transaction_date', [$startDate, $endDate])
-                ->selectRaw("DATE(transaction_date) as date, SUM(amount) as total")
+                ->selectRaw("DATE(transaction_date) as date,
+                             SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income,
+                             SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense")
                 ->groupBy('date')
                 ->orderBy('date')
                 ->get();
 
             $current = $startDate->copy();
-            $rawTrendMap = $rawTrend->pluck('total', 'date')->toArray();
+            $rawTrendMap = [];
+            foreach ($rawTrend as $row) {
+                $rawTrendMap[$row->date] = [
+                    'income' => (float) $row->income,
+                    'expense' => (float) $row->expense,
+                ];
+            }
 
             while ($current->lte($endDate)) {
                 $dateStr = $current->format('Y-m-d');
                 $trend[] = [
                     'label' => $current->translatedFormat('d M'),
                     'date' => $dateStr,
-                    'total' => (float) ($rawTrendMap[$dateStr] ?? 0),
+                    'income' => (float) ($rawTrendMap[$dateStr]['income'] ?? 0),
+                    'expense' => (float) ($rawTrendMap[$dateStr]['expense'] ?? 0),
                 ];
                 $current->addDay();
             }
@@ -86,10 +102,10 @@ class ReportController extends Controller
             ->whereNull('deleted_at')
             ->where('type', 'income')
             ->whereBetween('transaction_date', [$startDate, $endDate])
-            ->selectRaw("payment_method, SUM(amount) as total, COUNT(id) as count")
+            ->selectRaw('payment_method, SUM(amount) as total, COUNT(id) as count')
             ->groupBy('payment_method')
             ->get()
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'payment_method' => $item->payment_method ?: 'cash',
                 'total' => (float) $item->total,
                 'count' => (int) $item->count,
@@ -102,7 +118,7 @@ class ReportController extends Controller
             ->where('orders.payment_status', 'paid')
             ->where('order_items.status', '!=', 'cancelled')
             ->whereBetween('orders.created_at', [$startDate, $endDate])
-            ->selectRaw("order_items.name, SUM(order_items.qty) as total_qty, SUM(order_items.subtotal) as total_revenue")
+            ->selectRaw('order_items.name, SUM(order_items.qty) as total_qty, SUM(order_items.subtotal) as total_revenue')
             ->groupBy('order_items.name')
             ->orderByDesc('total_qty')
             ->limit(5)
@@ -127,12 +143,12 @@ class ReportController extends Controller
      */
     public function transactions(Request $request): JsonResponse
     {
-        $startDate = $request->filled('start_date') 
-            ? Carbon::parse($request->string('start_date'))->startOfDay() 
+        $startDate = $request->filled('start_date')
+            ? Carbon::parse($request->string('start_date'))->startOfDay()
             : now()->subDays(30)->startOfDay();
-            
-        $endDate = $request->filled('end_date') 
-            ? Carbon::parse($request->string('end_date'))->endOfDay() 
+
+        $endDate = $request->filled('end_date')
+            ? Carbon::parse($request->string('end_date'))->endOfDay()
             : now()->endOfDay();
 
         $query = Transaction::with(['user'])
@@ -148,7 +164,7 @@ class ReportController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->string('search');
-            $query->where(fn($q) => $q->where('transaction_number', 'like', "%{$search}%")
+            $query->where(fn ($q) => $q->where('transaction_number', 'like', "%{$search}%")
                 ->orWhere('description', 'like', "%{$search}%"));
         }
 

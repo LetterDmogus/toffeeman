@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\InventoryItem;
+use App\Models\MenuItem;
 use App\Models\Order;
+use App\Models\Package;
 use App\Models\Table;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,17 +40,51 @@ class KioskOrderController extends Controller
             'items.*.package_items' => ['nullable', 'array'],
         ]);
 
-        return DB::transaction(function () use ($validated, $table, $request) {
+        // Stock Validation Checker
+        $requiredStock = [];
+        foreach ($validated['items'] as $item) {
+            if (! empty($item['menu_item_id'])) {
+                $menuItem = MenuItem::find($item['menu_item_id']);
+                if ($menuItem && $menuItem->inventory_item_id) {
+                    $invId = $menuItem->inventory_item_id;
+                    $requiredStock[$invId] = ($requiredStock[$invId] ?? 0) + $item['qty'];
+                }
+            }
+            if (! empty($item['package_id'])) {
+                $package = Package::find($item['package_id']);
+                if ($package) {
+                    $packageItems = $package->packageItems()->whereNotNull('inventory_item_id')->get();
+                    foreach ($packageItems as $pkgItem) {
+                        $invId = $pkgItem->inventory_item_id;
+                        $requiredStock[$invId] = ($requiredStock[$invId] ?? 0) + ($item['qty'] * $pkgItem->qty);
+                    }
+                }
+            }
+        }
+
+        foreach ($requiredStock as $invId => $reqQty) {
+            $invItem = InventoryItem::find($invId);
+            if (! $invItem || $invItem->qty_good < $reqQty) {
+                $itemName = $invItem ? $invItem->name : 'Barang inventoris';
+
+                return response()->json([
+                    'message' => "Stok tidak mencukupi untuk: {$itemName}. Silakan kurangi jumlah pesanan Anda.",
+                    'errors' => ['items' => ["Stok tidak mencukupi untuk: {$itemName}."]],
+                ], 422);
+            }
+        }
+
+        return DB::transaction(function () use ($validated, $table) {
             $totalAmount = collect($validated['items'])->sum(fn ($i) => $i['price'] * $i['qty']);
             $tax = round($totalAmount * 0.1);
             $finalAmount = $totalAmount + $tax;
 
-            /** @var \App\Models\User|null $customer */
+            /** @var User|null $customer */
             $customer = auth()->user();
             $customerId = ($customer && $customer->hasRole('customer')) ? $customer->id : null;
 
             $order = Order::create([
-                'order_number' => 'KSK-' . strtoupper(Str::random(8)),
+                'order_number' => 'KSK-'.strtoupper(Str::random(8)),
                 'table_id' => $table->id,
                 'customer_id' => $customerId,
                 'order_type' => 'dine_in',

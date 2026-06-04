@@ -19,6 +19,7 @@ defineOptions({
 });
 
 const categories = ref<{ id: number; name: string }[]>([]);
+const inventoryItems = ref<{ id: number; name: string; qty: any }[]>([]);
 
 const refreshCategories = async () => {
     try {
@@ -34,7 +35,27 @@ const refreshCategories = async () => {
     } catch (e) { console.error(e); }
 };
 
-onMounted(() => refreshCategories());
+const refreshInventoryItems = async () => {
+    try {
+        const res = await fetch('/api/inventory-items?all=true', { headers: { Accept: 'application/json' } });
+        if (res.ok) {
+            const data = await res.json();
+            inventoryItems.value = data;
+            const invField = menuItemFields.find(f => f.key === 'inventory_item_id');
+            if (invField) {
+                invField.options = [
+                    { value: '', label: '— Tidak Terhubung (Bukan barang jadi) —' },
+                    ...data.map((i: any) => ({ value: i.id, label: `${i.name} (Stok: ${Number(i.qty)})` }))
+                ];
+            }
+        }
+    } catch (e) { console.error(e); }
+};
+
+onMounted(() => {
+    refreshCategories();
+    refreshInventoryItems();
+});
 
 // ─── Menu Customizations (Variants & Add-ons) Logic ──────────────────
 const selectedMenuItem = ref<any | null>(null);
@@ -103,6 +124,7 @@ const menuItemFields: FormField[] = [
     { key: 'preparation_time', label: 'Waktu Persiapan (menit)', type: 'number', advanced: true },
     { key: 'allergens', label: 'Alergen', type: 'tags', advanced: true },
     { key: 'tags', label: 'Tag Menu', type: 'tags', advanced: true },
+    { key: 'inventory_item_id', label: 'Hubungkan ke Barang Inventoris (Potong stok otomatis)', type: 'select', options: [], advanced: true },
 ];
 
 const menuItemBadge = { available: 'success', sold_out: 'danger', draft: 'warning' };

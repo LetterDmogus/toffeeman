@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { Barcode } from 'lucide-vue-next';
+import { Button } from '@/components/ui/button';
 import CRUDTable from '@/components/CRUDTable.vue';
 import type { Column, FormField } from '@/components/CRUDTable.vue';
 import ops from '@/routes/ops';
@@ -25,6 +27,14 @@ const refreshCategories = async () => {
 
 onMounted(refreshCategories);
 
+const downloadBarcode = (row: any) => {
+    if (!row.sku) {
+        alert('Barang ini tidak memiliki SKU/Barcode.');
+        return;
+    }
+    window.open(`/api/inventory-items/${row.id}/barcode`, '_blank');
+};
+
 const columns: Column<any>[] = [
     { key: 'name', label: 'Nama Barang' },
     { key: 'sku', label: 'SKU' },
@@ -43,9 +53,9 @@ const fields: FormField[] = [
     { key: 'sku', label: 'SKU', type: 'text' },
     { key: 'inventory_category_id', label: 'Kategori', type: 'select', required: true, options: [] },
     { key: 'price', label: 'Harga Beli (Rp)', type: 'number', required: true },
-    { key: 'qty_good', label: 'Stok Kondisi Baik', type: 'number', required: true },
-    { key: 'qty_fair', label: 'Stok Kondisi Kurang Baik', type: 'number', required: true },
-    { key: 'qty_damaged', label: 'Stok Kondisi Rusak', type: 'number', required: true },
+    { key: 'qty_good', label: 'Stok Kondisi Baik', type: 'number', required: true, disableOnEdit: true },
+    { key: 'qty_fair', label: 'Stok Kondisi Kurang Baik', type: 'number', required: true, disableOnEdit: true },
+    { key: 'qty_damaged', label: 'Stok Kondisi Rusak', type: 'number', required: true, disableOnEdit: true },
     { key: 'qty', label: 'Total Stok Keseluruhan', type: 'number', required: true },
     { key: 'unit', label: 'Satuan', type: 'text', required: true },
     { key: 'min_qty', label: 'Min Stok', type: 'number', required: true },
@@ -58,6 +68,26 @@ const badgeMap = { in_stock: 'success', low_stock: 'warning', out_of_stock: 'dan
 
 <template>
     <div class="p-6">
-        <CRUDTable resource-name="Barang / Peralatan" api-url="/api/inventory-items" :columns="columns" :form-fields="fields" :badge-map="badgeMap" />
+        <CRUDTable
+            resource-name="Barang / Peralatan"
+            api-url="/api/inventory-items"
+            :columns="columns"
+            :form-fields="fields"
+            :badge-map="badgeMap"
+            :default-visible-columns="['name', 'sku', 'inventory_category_id', 'qty', 'status']"
+        >
+            <template #actions="{ row }">
+                <Button 
+                    v-if="row.sku"
+                    size="icon-sm" 
+                    variant="ghost" 
+                    class="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" 
+                    @click="downloadBarcode(row)" 
+                    title="Generate & Download Barcode SVG"
+                >
+                    <Barcode class="h-4.5 w-4.5" />
+                </Button>
+            </template>
+        </CRUDTable>
     </div>
 </template>

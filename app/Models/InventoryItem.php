@@ -44,5 +44,11 @@ class InventoryItem extends Model
                 $item->status = 'in_stock';
             }
         });
+
+        static::saved(function (InventoryItem $item) {
+            if ($item->qty <= 0) {
+                MenuItem::where('inventory_item_id', $item->id)->update(['status' => 'sold_out']);
+            }
+        });
     }
 }

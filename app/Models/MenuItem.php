@@ -38,4 +38,9 @@ class MenuItem extends Model
     {
         return $this->hasMany(MenuOption::class);
     }
+
+    public function inventoryItem()
+    {
+        return $this->belongsTo(InventoryItem::class);
+    }
 }

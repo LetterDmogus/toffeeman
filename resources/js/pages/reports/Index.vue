@@ -34,9 +34,55 @@ defineOptions({
 });
 
 // Date Range Filter
-const dateRange = ref('30days'); // 'today', '7days', '30days', 'month', 'custom'
-const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-const endDate = ref(new Date().toISOString().split('T')[0]);
+const isMounted = ref(false);
+const startDate = ref('');
+const endDate = ref('');
+
+const reportType = ref('monthly'); // 'daily', 'weekly', 'monthly'
+const selectedDate = ref(new Date().toISOString().split('T')[0]);
+const selectedMonth = ref(new Date().toISOString().slice(0, 7)); // YYYY-MM
+const selectedWeek = ref('1');
+const selectedMonthOnly = ref(new Date().toISOString().slice(0, 7)); // YYYY-MM
+const financialView = ref('all'); // 'all' (Gabungan), 'income' (Pemasukan), 'expense' (Pengeluaran)
+
+const updateDateRange = () => {
+    if (reportType.value === 'daily') {
+        startDate.value = selectedDate.value;
+        endDate.value = selectedDate.value;
+    } else if (reportType.value === 'weekly') {
+        const [year, month] = selectedMonth.value.split('-').map(Number);
+        const week = Number(selectedWeek.value);
+        
+        let startDay = 1 + (week - 1) * 7;
+        let endDay = startDay + 6;
+        
+        const lastDayOfMonth = new Date(year, month, 0).getDate();
+        if (startDay > lastDayOfMonth) {
+            startDay = lastDayOfMonth;
+        }
+        if (endDay > lastDayOfMonth) {
+            endDay = lastDayOfMonth;
+        }
+        
+        const start = new Date(year, month - 1, startDay);
+        const end = new Date(year, month - 1, endDay);
+        
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        startDate.value = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
+        endDate.value = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
+    } else if (reportType.value === 'monthly') {
+        const [year, month] = selectedMonthOnly.value.split('-').map(Number);
+        const first = new Date(year, month - 1, 1);
+        const last = new Date(year, month, 0);
+        
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        startDate.value = `${first.getFullYear()}-${pad(first.getMonth() + 1)}-${pad(first.getDate())}`;
+        endDate.value = `${last.getFullYear()}-${pad(last.getMonth() + 1)}-${pad(last.getDate())}`;
+    }
+};
+
+// Initialize dates
+updateDateRange();
 
 // Dashboard Data
 const loadingDashboard = ref(false);
@@ -94,31 +140,28 @@ const formatIDR = (value: number) => {
     }).format(value);
 };
 
-// Date range presets watcher
-watch(dateRange, (newRange) => {
-    const today = new Date();
-    if (newRange === 'today') {
-        startDate.value = today.toISOString().split('T')[0];
-        endDate.value = today.toISOString().split('T')[0];
-    } else if (newRange === '7days') {
-        const d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        startDate.value = d.toISOString().split('T')[0];
-        endDate.value = today.toISOString().split('T')[0];
-    } else if (newRange === '30days') {
-        const d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        startDate.value = d.toISOString().split('T')[0];
-        endDate.value = today.toISOString().split('T')[0];
-    } else if (newRange === 'month') {
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-        startDate.value = firstDay.toISOString().split('T')[0];
-        endDate.value = today.toISOString().split('T')[0];
-    }
-    // For 'custom', we keep the inputs as they are
+// Watchers
+watch([reportType, selectedDate, selectedMonth, selectedWeek, selectedMonthOnly], () => {
+    updateDateRange();
     fetchReportData();
+});
+
+watch(financialView, (newVal) => {
+    filterType.value = newVal === 'all' ? '' : newVal;
+    renderTrendChart();
+    fetchTransactions(1);
+});
+
+watch(filterType, (newVal) => {
+    const targetView = newVal === '' ? 'all' : newVal;
+    if (financialView.value !== targetView) {
+        financialView.value = targetView;
+    }
 });
 
 // Fetch Dashboard & Transactions Data
 const fetchReportData = async () => {
+    if (!isMounted.value) return;
     loadingDashboard.value = true;
     try {
         const queryParams = new URLSearchParams({
@@ -413,6 +456,7 @@ const triggerPrint = () => {
 };
 
 onMounted(() => {
+    isMounted.value = true;
     fetchReportData();
 });
 </script>
@@ -422,45 +466,117 @@ onMounted(() => {
 
     <div class="p-6 flex flex-col gap-6 overflow-y-auto w-full custom-scrollbar print:p-0 print:bg-white print:text-black">
         
-        <!-- 📅 CONTROL PANEL & FILTERS -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm print:hidden">
-            <div class="space-y-1">
-                <h1 class="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Laporan Keuangan</h1>
-                <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Pantau pendapatan, pengeluaran, dan tren pesanan restoran</p>
-            </div>
-            
-            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                <div class="flex items-center gap-2">
-                    <select v-model="dateRange" class="h-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs font-black text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500">
-                        <option value="today">Hari Ini</option>
-                        <option value="7days">7 Hari Terakhir</option>
-                        <option value="30days">30 Hari Terakhir</option>
-                        <option value="month">Bulan Ini</option>
-                        <option value="custom">Rentang Kustom</option>
-                    </select>
-                    
-                    <div v-if="dateRange === 'custom'" class="flex items-center gap-2 animate-in slide-in-from-right-3 duration-200">
-                        <Input type="date" v-model="startDate" class="h-10 text-xs font-bold" />
-                        <span class="text-slate-400 text-xs font-black">s.d.</span>
-                        <Input type="date" v-model="endDate" class="h-10 text-xs font-bold" />
-                    </div>
+        <!-- 📑 HEADER & TITLE (Plain layout, no container background) -->
+        <div class="flex flex-col gap-1 pb-4 print:hidden">
+            <h1 class="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Laporan Keuangan</h1>
+            <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Pantau pendapatan, pengeluaran, dan tren pesanan restoran</p>
+        </div>
+        
+        <!-- 📅 FILTERS SECTION (Multiple rows, no background container wrapper) -->
+        <div class="flex flex-col gap-4 print:hidden">
+            <!-- Row 1: Period Selection -->
+            <div class="flex flex-wrap items-center gap-3">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-wider min-w-[120px]">Periode:</span>
+                <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0">
+                    <button
+                        type="button"
+                        @click="reportType = 'daily'"
+                        :class="reportType === 'daily' ? 'bg-white dark:bg-slate-900 shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'"
+                        class="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
+                    >
+                        Harian
+                    </button>
+                    <button
+                        type="button"
+                        @click="reportType = 'weekly'"
+                        :class="reportType === 'weekly' ? 'bg-white dark:bg-slate-900 shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'"
+                        class="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
+                    >
+                        Mingguan
+                    </button>
+                    <button
+                        type="button"
+                        @click="reportType = 'monthly'"
+                        :class="reportType === 'monthly' ? 'bg-white dark:bg-slate-900 shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'"
+                        class="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
+                    >
+                        Bulanan
+                    </button>
                 </div>
 
+                <!-- Date Inputs corresponding to reportType -->
+                <div class="flex items-center gap-2">
+                    <!-- Harian Picker -->
+                    <div v-if="reportType === 'daily'" class="flex items-center gap-2 animate-in slide-in-from-right-2 duration-150">
+                        <Input type="date" v-model="selectedDate" class="h-10 text-xs font-bold w-40" />
+                    </div>
+
+                    <!-- Mingguan Picker -->
+                    <div v-else-if="reportType === 'weekly'" class="flex items-center gap-2 animate-in slide-in-from-right-2 duration-150">
+                        <Input type="month" v-model="selectedMonth" class="h-10 text-xs font-bold w-40" />
+                        <select v-model="selectedWeek" class="h-10 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-xs font-black text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            <option value="1">Minggu 1 (Tgl 1-7)</option>
+                            <option value="2">Minggu 2 (Tgl 8-14)</option>
+                            <option value="3">Minggu 3 (Tgl 15-21)</option>
+                            <option value="4">Minggu 4 (Tgl 22-28)</option>
+                            <option value="5">Minggu 5 (Tgl 29+)</option>
+                        </select>
+                    </div>
+
+                    <!-- Bulanan Picker -->
+                    <div v-else-if="reportType === 'monthly'" class="flex items-center gap-2 animate-in slide-in-from-right-2 duration-150">
+                        <Input type="month" v-model="selectedMonthOnly" class="h-10 text-xs font-bold w-40" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: Financial Type View -->
+            <div class="flex flex-wrap items-center gap-3">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-wider min-w-[120px]">Tipe Laporan:</span>
+                <div class="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0">
+                    <button
+                        type="button"
+                        @click="financialView = 'all'"
+                        :class="financialView === 'all' ? 'bg-white dark:bg-slate-900 shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'"
+                        class="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
+                    >
+                        Gabungan
+                    </button>
+                    <button
+                        type="button"
+                        @click="financialView = 'income'"
+                        :class="financialView === 'income' ? 'bg-white dark:bg-slate-900 shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'"
+                        class="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
+                    >
+                        Pemasukan
+                    </button>
+                    <button
+                        type="button"
+                        @click="financialView = 'expense'"
+                        :class="financialView === 'expense' ? 'bg-white dark:bg-slate-900 shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'"
+                        class="px-3 py-1.5 rounded-lg text-xs font-black transition-all"
+                    >
+                        Pengeluaran
+                    </button>
+                </div>
+            </div>
+
+            <!-- Row 3: Action buttons -->
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-wider min-w-[120px]">Aksi:</span>
                 <Button @click="fetchReportData" :disabled="loadingDashboard" variant="outline" class="h-10 px-4 rounded-xl border-slate-200 hover:bg-slate-50 font-black text-xs gap-2">
                     <RefreshCw class="h-3.5 w-3.5" :class="loadingDashboard ? 'animate-spin' : ''" />
                     <span>REFRESH</span>
                 </Button>
                 
-                <div class="flex items-center gap-2 ml-auto md:ml-0">
-                    <Button @click="exportToExcel" variant="outline" class="h-10 px-4 rounded-xl border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/20 font-black text-xs gap-2">
-                        <Download class="h-3.5 w-3.5" />
-                        <span>EXCEL</span>
-                    </Button>
-                    <Button @click="triggerPrint" class="h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-black text-xs gap-2 shadow-lg shadow-brand-100 dark:shadow-none">
-                        <Printer class="h-3.5 w-3.5" />
-                        <span>CETAK LAPORAN</span>
-                    </Button>
-                </div>
+                <Button @click="exportToExcel" variant="outline" class="h-10 px-4 rounded-xl border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/20 font-black text-xs gap-2">
+                    <Download class="h-3.5 w-3.5" />
+                    <span>EXCEL</span>
+                </Button>
+                <Button @click="triggerPrint" class="h-10 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-black text-xs gap-2 shadow-lg shadow-brand-100 dark:shadow-none">
+                    <Printer class="h-3.5 w-3.5" />
+                    <span>CETAK LAPORAN</span>
+                </Button>
             </div>
         </div>
 

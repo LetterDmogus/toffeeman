@@ -17,6 +17,7 @@
         "laravel/wayfinder": "^0.1.14",
         "maatwebsite/excel": "^3.1",
         "midtrans/midtrans-php": "^2.6",
+        "picqer/php-barcode-generator": "^3.2",
         "spatie/laravel-activitylog": "^5.0",
         "spatie/laravel-permission": "^7.4"
     },

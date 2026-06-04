@@ -25,6 +25,10 @@ const statusMap = {
     completed: { label: 'Selesai', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
     cancelled: { label: 'Dibatalkan', color: 'bg-destructive/15 text-destructive' },
 }
+
+function getStepIndex(status: string) {
+    return ['pending', 'preparing', 'ready', 'served'].indexOf(status)
+}
 </script>
 
 <style>
@@ -79,6 +83,41 @@ const statusMap = {
                             <span v-for="item in order.items" :key="item.id">
                                 {{ item.qty }}× {{ item.name }}
                             </span>
+                        </div>
+                        
+                        <!-- Stepper Progress for active order -->
+                        <div v-if="getStepIndex(order.status) !== -1" class="mb-4 md:mb-5 pt-3 border-t space-y-2">
+                            <div class="relative flex items-center justify-between px-1">
+                                <!-- Connecting Line -->
+                                <div class="absolute left-[12.5%] right-[12.5%] top-3 h-0.5 bg-muted -z-10">
+                                    <div 
+                                        class="h-full bg-primary transition-all duration-500" 
+                                        :style="{ width: (getStepIndex(order.status) / 3 * 100) + '%' }"
+                                    ></div>
+                                </div>
+                                
+                                <!-- Steps -->
+                                <div 
+                                    v-for="(step, idx) in ['pending', 'preparing', 'ready', 'served']" 
+                                    :key="step"
+                                    class="flex flex-col items-center flex-1 relative"
+                                >
+                                    <div 
+                                        class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300"
+                                        :class="getStepIndex(order.status) >= idx 
+                                            ? 'bg-primary text-primary-foreground shadow-sm scale-110' 
+                                            : 'bg-muted text-muted-foreground'"
+                                    >
+                                        <span class="relative z-10">{{ idx + 1 }}</span>
+                                    </div>
+                                    <span 
+                                        class="text-[9px] md:text-[10px] mt-1 font-semibold text-center transition-colors"
+                                        :class="getStepIndex(order.status) >= idx ? 'text-primary font-bold' : 'text-muted-foreground'"
+                                    >
+                                        {{ step === 'pending' ? 'Diterima' : step === 'preparing' ? 'Dimasak' : step === 'ready' ? 'Siap' : 'Disajikan' }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="flex justify-between items-center pt-3 md:pt-4 border-t">

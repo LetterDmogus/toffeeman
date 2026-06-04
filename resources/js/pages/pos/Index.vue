@@ -5,7 +5,7 @@ import {
     ChevronRight, Plus, Minus, X, Check, Loader2, ArrowLeft,
     CreditCard, Banknote, Landmark, ShoppingBag, Utensils,
     Info, Flame, ShieldAlert, Tag, LayoutGrid, List, Receipt,
-    ChefHat, Save
+    ChefHat, Save, Barcode
 } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -324,6 +324,118 @@ const addCustomizedToCart = () => {
     customizingItem.value = null;
 };
 
+const scanQuery = ref('');
+const isScanning = ref(false);
+const scanStatus = ref<{ message: string; type: 'success' | 'error' } | null>(null);
+let scanStatusTimeout: any = null;
+
+const playBeep = (type: 'success' | 'error' = 'success') => {
+    try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        if (type === 'success') {
+            osc.frequency.setValueAtTime(880, ctx.currentTime); // high pitch beep
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.12);
+        } else {
+            osc.frequency.setValueAtTime(220, ctx.currentTime); // low pitch buzzer
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.3);
+        }
+    } catch (e) {
+        console.error('Audio beep failed', e);
+    }
+};
+
+const setScanStatus = (message: string, type: 'success' | 'error') => {
+    scanStatus.value = { message, type };
+    if (scanStatusTimeout) {
+        clearTimeout(scanStatusTimeout);
+    }
+    scanStatusTimeout = setTimeout(() => {
+        scanStatus.value = null;
+    }, 4000);
+};
+
+const handleBarcodeScan = async () => {
+    const sku = scanQuery.value.trim();
+    if (!sku) return;
+    
+    isScanning.value = true;
+    try {
+        const res = await fetch(`/api/inventory-items?search=${encodeURIComponent(sku)}`, {
+            headers: { Accept: 'application/json' }
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            const items = data.data || [];
+            
+            const invItem = items.find((i: any) => i.sku && i.sku.toLowerCase() === sku.toLowerCase());
+            
+            if (invItem) {
+                let menuItem = menuItems.value.find((m: any) => m.inventory_item_id === invItem.id);
+                
+                if (!menuItem) {
+                    menuItem = packages.value.find((p: any) => p.inventory_item_id === invItem.id);
+                }
+                
+                if (menuItem) {
+                    const isPkg = Boolean(menuItem.package_items);
+                    const customizationHash = `${menuItem.id}---`;
+                    const existing = cart.value.find(i => i.customizationHash === customizationHash);
+                    
+                    if (existing) {
+                        existing.qty += 1;
+                    } else {
+                        cart.value.push({
+                            ...menuItem,
+                            isPackage: isPkg,
+                            price: Number(menuItem.price),
+                            originalPrice: Number(menuItem.price),
+                            qty: 1,
+                            notes: '',
+                            customized: false,
+                            customizationHash,
+                            variants: [],
+                            add_ons: [],
+                            cartId: Date.now() + Math.random()
+                        });
+                    }
+                    scanQuery.value = '';
+                    setScanStatus(`Berhasil scan: ${menuItem.name}`, 'success');
+                    playBeep('success');
+                } else {
+                    scanQuery.value = '';
+                    setScanStatus(`Barang "${invItem.name}" belum terhubung ke Menu`, 'error');
+                    playBeep('error');
+                }
+            } else {
+                scanQuery.value = '';
+                setScanStatus(`Barcode/SKU tidak terdaftar: ${sku}`, 'error');
+                playBeep('error');
+            }
+        } else {
+            scanQuery.value = '';
+            setScanStatus('Gagal membaca data dari server', 'error');
+            playBeep('error');
+        }
+    } catch (e) {
+        console.error('Error scanning barcode', e);
+        scanQuery.value = '';
+        setScanStatus('Terjadi kesalahan koneksi scanner', 'error');
+        playBeep('error');
+    } finally {
+        isScanning.value = false;
+    }
+};
+
 // ─── Bill Management ─────────────────────────────────────────────────────────
 const selectBill = (order: any) => {
     activeOrderId.value = order.id;
@@ -630,27 +742,36 @@ const formatIDR = (val: number) => {
             <div class="flex-1 flex flex-col bg-white border-r border-brand-100 overflow-hidden">
                 <div v-if="!showCustomization && !showDetail" class="flex flex-col h-full animate-in fade-in duration-300">
                     <!-- Catalog Toolbar -->
-                    <div class="p-6 border-b border-brand-50 bg-white sticky top-0 z-10">
-                        <div class="flex flex-col gap-4">
-                            <div class="flex items-center justify-between gap-4">
-                                <div class="flex p-1 bg-brand-50 rounded-xl w-fit">
-                                    <button @click="activeCategory = 'all'" class="px-6 py-2 rounded-lg text-xs font-black transition-all" :class="activeCategory !== 'packages' ? 'bg-brand-600 text-white shadow-md' : 'text-brand-400 hover:text-brand-600'">MENU</button>
-                                    <button @click="activeCategory = 'packages'" class="px-6 py-2 rounded-lg text-xs font-black transition-all" :class="activeCategory === 'packages' ? 'bg-brand-600 text-white shadow-md' : 'text-brand-400 hover:text-brand-600'">PAKET</button>
-                                </div>
-                                <div class="flex items-center gap-4">
-                                    <div class="flex p-0.5 bg-slate-100 rounded-lg">
-                                        <button @click="viewMode = 'grid'" class="h-8 w-8 rounded-md flex items-center justify-center transition-all" :class="viewMode === 'grid' ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'"><LayoutGrid class="h-4 w-4" /></button>
-                                        <button @click="viewMode = 'list'" class="h-8 w-8 rounded-md flex items-center justify-center transition-all" :class="viewMode === 'list' ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'"><List class="h-4 w-4" /></button>
+                    <div class="px-6 py-3 border-b border-brand-50 bg-white sticky top-0 z-10">
+                        <div class="flex flex-col gap-2.5">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex p-0.5 bg-brand-50 rounded-lg w-fit">
+                                        <button @click="activeCategory = 'all'" class="px-4 py-1.5 rounded-md text-[11px] font-black transition-all" :class="activeCategory !== 'packages' ? 'bg-brand-600 text-white shadow-sm' : 'text-brand-400 hover:text-brand-600'">MENU</button>
+                                        <button @click="activeCategory = 'packages'" class="px-4 py-1.5 rounded-md text-[11px] font-black transition-all" :class="activeCategory === 'packages' ? 'bg-brand-600 text-white shadow-sm' : 'text-brand-400 hover:text-brand-600'">PAKET</button>
                                     </div>
-                                    <div class="relative w-full sm:w-64">
-                                        <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-300" />
-                                        <Input v-model="searchQuery" placeholder="Cari..." class="pl-10 rounded-xl border-brand-100 focus-visible:ring-brand-500 h-10 bg-white font-bold" />
+                                    <div class="flex p-0.5 bg-slate-100 rounded-lg shrink-0">
+                                        <button @click="viewMode = 'grid'" class="h-7 w-7 rounded-md flex items-center justify-center transition-all" :class="viewMode === 'grid' ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'"><LayoutGrid class="h-3.5 w-3.5" /></button>
+                                        <button @click="viewMode = 'list'" class="h-7 w-7 rounded-md flex items-center justify-center transition-all" :class="viewMode === 'list' ? 'bg-white text-brand-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'"><List class="h-3.5 w-3.5" /></button>
+                                    </div>
+                                </div>
+                                <div class="flex flex-1 sm:flex-initial items-center gap-2">
+                                    <div class="relative flex-1 sm:w-48">
+                                        <Barcode class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-brand-300" />
+                                        <Input v-model="scanQuery" @keydown.enter="handleBarcodeScan" placeholder="Scan Barcode / SKU..." class="pl-8 rounded-lg border-brand-100 focus-visible:ring-brand-500 h-8 bg-white font-bold text-xs" :disabled="isScanning" />
+                                        <div v-if="scanStatus" class="absolute left-0 top-[34px] z-50 text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md leading-tight transition-all animate-in fade-in" :class="scanStatus.type === 'success' ? 'text-emerald-600 bg-emerald-50 border border-emerald-200' : 'text-red-600 bg-red-50 border border-red-200'">
+                                            {{ scanStatus.message }}
+                                        </div>
+                                    </div>
+                                    <div class="relative flex-1 sm:w-48">
+                                        <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-brand-300" />
+                                        <Input v-model="searchQuery" placeholder="Cari..." class="pl-8 rounded-lg border-brand-100 focus-visible:ring-brand-500 h-8 bg-white font-bold text-xs" />
                                     </div>
                                 </div>
                             </div>
-                            <div v-if="activeCategory !== 'packages'" class="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar animate-in slide-in-from-top-2 duration-300">
-                                <button @click="activeCategory = 'all'" class="px-4 py-1.5 rounded-full text-[10px] font-bold border transition-all shrink-0" :class="activeCategory === 'all' ? 'bg-brand-50 border-brand-600 text-brand-600' : 'border-slate-100 text-slate-400 hover:border-brand-200'">Semua Kategori</button>
-                                <button v-for="cat in categories" :key="cat.id" @click="activeCategory = cat.id" class="px-4 py-1.5 rounded-full text-[10px] font-bold border transition-all shrink-0" :class="activeCategory === cat.id ? 'bg-brand-50 border-brand-600 text-brand-600' : 'border-slate-100 text-slate-400 hover:border-brand-200'">{{ cat.name }}</button>
+                            <div v-if="activeCategory !== 'packages'" class="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar animate-in slide-in-from-top-2 duration-300">
+                                <button @click="activeCategory = 'all'" class="px-3 py-1 rounded-full text-[9px] font-bold border transition-all shrink-0" :class="activeCategory === 'all' ? 'bg-brand-50 border-brand-600 text-brand-600' : 'border-slate-100 text-slate-400 hover:border-brand-200'">Semua Kategori</button>
+                                <button v-for="cat in categories" :key="cat.id" @click="activeCategory = cat.id" class="px-3 py-1 rounded-full text-[9px] font-bold border transition-all shrink-0" :class="activeCategory === cat.id ? 'bg-brand-50 border-brand-600 text-brand-600' : 'border-slate-100 text-slate-400 hover:border-brand-200'">{{ cat.name }}</button>
                             </div>
                         </div>
                     </div>

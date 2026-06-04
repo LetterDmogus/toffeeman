@@ -7,7 +7,10 @@ use App\Http\Controllers\Api\IngredientBatchController;
 use App\Http\Controllers\Api\IngredientCategoryController;
 use App\Http\Controllers\Api\IngredientController;
 use App\Http\Controllers\Api\InventoryCategoryController;
+use App\Http\Controllers\Api\InventoryInController;
 use App\Http\Controllers\Api\InventoryItemController;
+use App\Http\Controllers\Api\InventoryOpnameController;
+use App\Http\Controllers\Api\InventoryOutController;
 use App\Http\Controllers\Api\KioskAuthController;
 use App\Http\Controllers\Api\KioskOrderController;
 use App\Http\Controllers\Api\KitchenController;
@@ -62,6 +65,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::inertia('tables', 'ops/Tables')->name('tables');
         Route::inertia('inventory', 'ops/Inventory')->name('inventory');
         Route::inertia('inventory-categories', 'ops/InventoryCategories')->name('inventory-categories');
+        Route::inertia('inventory-ins', 'ops/InventoryIns')->name('inventory-ins');
+        Route::inertia('inventory-outs', 'ops/InventoryOuts')->name('inventory-outs');
+        Route::inertia('inventory-opnames', 'ops/InventoryOpnames')->name('inventory-opnames');
         Route::inertia('ingredients', 'ops/Ingredients')->name('ingredients');
         Route::inertia('ingredient-categories', 'ops/IngredientCategories')->name('ingredient-categories');
         Route::inertia('ingredient-batches', 'ops/IngredientBatches')->name('ingredient-batches');
@@ -83,6 +89,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'categories' => CategoryController::class,
             'inventory-categories' => InventoryCategoryController::class,
             'inventory-items' => InventoryItemController::class,
+            'inventory-ins' => InventoryInController::class,
+            'inventory-outs' => InventoryOutController::class,
+            'inventory-opnames' => InventoryOpnameController::class,
             'ingredient-categories' => IngredientCategoryController::class,
             'ingredients' => IngredientController::class,
             'ingredient-batches' => IngredientBatchController::class,
@@ -109,6 +118,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Special routes
         Route::get('users/roles', [UserController::class, 'roles'])->name('users.roles');
         Route::post('packages/{package}/items', [PackageController::class, 'syncItems'])->name('packages.items.sync');
+        Route::get('inventory-items/{inventory_item}/barcode', [InventoryItemController::class, 'barcode'])->name('inventory-items.barcode');
 
         // Kitchen API
         Route::get('kitchen/orders', [KitchenController::class, 'index'])->name('kitchen.orders');

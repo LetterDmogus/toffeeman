@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Models\InventoryItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Str;
+use Picqer\Barcode\BarcodeGeneratorSVG;
 
 class InventoryItemController extends BaseController
 {
@@ -32,6 +34,10 @@ class InventoryItemController extends BaseController
 
         if ($request->boolean('trash')) {
             $query->onlyTrashed();
+        }
+
+        if ($request->boolean('all')) {
+            return response()->json($query->orderBy('name')->get());
         }
 
         $items = $query->orderBy('name')->paginate($request->integer('per_page', 15));
@@ -134,5 +140,25 @@ class InventoryItemController extends BaseController
         $inventoryItem->forceDelete();
 
         return response()->json(['message' => 'Inventory item permanently deleted.']);
+    }
+
+    /**
+     * Generate barcode for the inventory item and return as SVG.
+     */
+    public function barcode(InventoryItem $inventoryItem): Response
+    {
+        $sku = $inventoryItem->sku;
+
+        if (empty($sku)) {
+            abort(400, 'Barang ini tidak memiliki SKU/Barcode.');
+        }
+
+        $generator = new BarcodeGeneratorSVG;
+        $svg = $generator->getBarcode($sku, $generator::TYPE_CODE_128, 2, 60);
+
+        return response($svg, 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Content-Disposition' => 'attachment; filename="barcode-'.$sku.'.svg"',
+        ]);
     }
 }

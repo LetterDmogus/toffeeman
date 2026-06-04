@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue';
 import {
     Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight,
     ChevronsLeft, ChevronsRight, Loader2, AlertCircle, X, Check, ArrowLeft,
-    RotateCcw, Trash,
+    RotateCcw, Trash, SlidersHorizontal,
 } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import ImageUploader from '@/components/ImageUploader.vue';
 
 // ─── Column definition ────────────────────────────────────────────────────────
@@ -31,6 +39,7 @@ export type FormField = {
     required?: boolean;
     options?: { value: string | number | boolean; label: string }[];
     advanced?: boolean;
+    disableOnEdit?: boolean;
 };
 
 // ─── Paginated response shape ─────────────────────────────────────────────────
@@ -57,8 +66,14 @@ const props = withDefaults(defineProps<{
     badgeMap?: Record<string, string>;
     /** Key to use as unique identifier (default: "id") */
     idKey?: keyof T & string;
+    /** Default visible columns */
+    defaultVisibleColumns?: string[];
+    disableEdit?: boolean;
+    disableDelete?: boolean;
 }>(), {
     idKey: 'id',
+    disableEdit: false,
+    disableDelete: false,
 });
 
 const emit = defineEmits<{
@@ -73,6 +88,35 @@ const search = ref('');
 const loading = ref(false);
 const error = ref('');
 const page = ref(1);
+
+// Column visibility state
+const visibleKeys = ref<string[]>(
+    props.defaultVisibleColumns && props.defaultVisibleColumns.length > 0
+        ? [...props.defaultVisibleColumns]
+        : props.columns.map(c => c.key)
+);
+
+watch(() => props.columns, (newCols) => {
+    if (!props.defaultVisibleColumns || props.defaultVisibleColumns.length === 0) {
+        visibleKeys.value = newCols.map(c => c.key);
+    }
+}, { deep: true });
+
+const activeColumns = computed(() => {
+    return props.columns.filter(col => visibleKeys.value.includes(col.key));
+});
+
+function toggleColumnVisibility(key: string, checked: boolean) {
+    if (checked) {
+        if (!visibleKeys.value.includes(key)) {
+            visibleKeys.value = [...visibleKeys.value, key];
+        }
+    } else {
+        if (visibleKeys.value.length > 1) {
+            visibleKeys.value = visibleKeys.value.filter(k => k !== key);
+        }
+    }
+}
 
 // Bulk Selection State
 const selectedIds = ref<Array<string | number>>([]);
@@ -152,6 +196,17 @@ watch(search, () => {
 // Watch page change without firing on initial load
 watch(page, () => {
     fetchData();
+});
+
+// Automatically calculate total stock (qty) if good/fair/damaged quantities are defined
+watch([
+    () => formData.value.qty_good,
+    () => formData.value.qty_fair,
+    () => formData.value.qty_damaged,
+], ([good, fair, damaged]) => {
+    if (good !== undefined || fair !== undefined || damaged !== undefined) {
+        formData.value.qty = (Number(good) || 0) + (Number(fair) || 0) + (Number(damaged) || 0);
+    }
 });
 
 fetchData();
@@ -445,7 +500,39 @@ const totalPages = computed(() => pagination.value.last_page);
                     />
                 </div>
                 <div class="flex items-center gap-2 ml-auto sm:ml-0 shrink-0">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger :as-child="true">
+                            <Button
+                                variant="outline"
+                                class="h-10 rounded-lg flex items-center gap-2 border-solid"
+                                title="Pilih Kolom"
+                            >
+                                <SlidersHorizontal class="h-4 w-4 text-muted-foreground" />
+                                <span>Kolom</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" class="w-56">
+                            <DropdownMenuLabel>Tampilkan Kolom</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                v-for="col in columns"
+                                :key="col.key"
+                                @select.prevent="toggleColumnVisibility(col.key, !visibleKeys.includes(col.key))"
+                                class="flex items-center gap-2.5 cursor-pointer px-3 py-2"
+                            >
+                                <div
+                                    class="h-4 w-4 shrink-0 rounded border border-brand-600 flex items-center justify-center transition-colors"
+                                    :class="visibleKeys.includes(col.key) ? 'bg-brand-600 border-brand-600 text-white' : 'bg-transparent border-input'"
+                                >
+                                    <Check v-if="visibleKeys.includes(col.key)" class="h-3 w-3 stroke-[3]" />
+                                </div>
+                                <span class="text-sm font-medium text-foreground">{{ col.label }}</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Button
+                        v-if="!disableDelete"
                         variant="outline"
                         @click="showTrash = !showTrash"
                         class="h-10 rounded-lg flex items-center gap-2 border-dashed"
@@ -541,14 +628,14 @@ const totalPages = computed(() => pagination.value.last_page);
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b bg-muted/40">
-                                <th class="w-[40px] px-4 py-3">
+                                <th v-if="!disableDelete" class="w-[40px] px-4 py-3">
                                     <Checkbox
                                         :checked="selectAllState"
                                         @update:checked="toggleSelectAll"
                                     />
                                 </th>
                                 <th
-                                    v-for="col in columns"
+                                    v-for="col in activeColumns"
                                     :key="col.key"
                                     class="whitespace-nowrap px-4 py-3 text-left font-semibold text-muted-foreground"
                                 >
@@ -562,7 +649,7 @@ const totalPages = computed(() => pagination.value.last_page);
                         <tbody>
                             <tr v-if="rows.length === 0 && !loading">
                                 <td
-                                    :colspan="columns.length + 2"
+                                    :colspan="activeColumns.length + (disableDelete ? 1 : 2)"
                                     class="px-4 py-12 text-center text-muted-foreground"
                                 >
                                     Tidak ada data ditemukan.
@@ -574,14 +661,14 @@ const totalPages = computed(() => pagination.value.last_page);
                                 class="border-b transition-colors last:border-0 hover:bg-muted/30"
                                 :class="selectedIds.includes((row as Record<string, unknown>)[idKey] as string | number) ? 'bg-brand-50/20' : ''"
                             >
-                                <td class="px-4 py-3">
+                                <td v-if="!disableDelete" class="px-4 py-3">
                                     <Checkbox
                                         :checked="selectedIds.includes((row as Record<string, unknown>)[idKey] as string | number)"
                                         @update:checked="(checked) => toggleSelect(row, checked)"
                                     />
                                 </td>
                                 <td
-                                    v-for="col in columns"
+                                    v-for="col in activeColumns"
                                     :key="col.key"
                                     class="max-w-[200px] truncate px-4 py-3"
                                 >
@@ -620,6 +707,7 @@ const totalPages = computed(() => pagination.value.last_page);
                                         <template v-else>
                                             <slot name="actions" :row="row" />
                                             <Button
+                                                v-if="!disableEdit"
                                                 size="icon-sm"
                                                 variant="ghost"
                                                 @click="openEdit(row)"
@@ -628,6 +716,7 @@ const totalPages = computed(() => pagination.value.last_page);
                                                 <Pencil class="h-4 w-4" />
                                             </Button>
                                             <Button
+                                                v-if="!disableDelete"
                                                 size="icon-sm"
                                                 variant="ghost"
                                                 class="text-destructive hover:text-destructive"
@@ -687,7 +776,16 @@ const totalPages = computed(() => pagination.value.last_page);
 
         <!-- 📝 FORM VIEW (In-place transitions instead of modal) -->
         <template v-else>
-            <div class="rounded-xl border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <slot
+                v-if="$slots.form"
+                name="form"
+                :mode="dialogMode"
+                :row="editingRow"
+                :submitting="submitting"
+                :cancel="cancelForm"
+                :refresh="fetchData"
+            />
+            <div v-else class="rounded-xl border bg-card p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
                 <div class="flex items-center gap-3 border-b pb-4 mb-6">
                     <Button variant="ghost" size="icon-sm" @click="cancelForm">
                         <ArrowLeft class="h-4 w-4" />
@@ -731,6 +829,7 @@ const totalPages = computed(() => pagination.value.last_page);
                             :placeholder="field.placeholder"
                             rows="4"
                             class="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            :disabled="dialogMode === 'edit' && field.disableOnEdit"
                         />
 
                         <!-- Select -->
@@ -739,6 +838,7 @@ const totalPages = computed(() => pagination.value.last_page);
                             :id="`field-${field.key}`"
                             v-model="formData[field.key]"
                             class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            :disabled="dialogMode === 'edit' && field.disableOnEdit"
                         >
                             <option value="" disabled>Pilih {{ field.label }}</option>
                             <option
@@ -756,6 +856,7 @@ const totalPages = computed(() => pagination.value.last_page);
                             v-model="formData[field.key] as string"
                             :placeholder="field.placeholder"
                             class="h-10 rounded-lg focus-visible:ring-brand-500"
+                            :disabled="field.key === 'qty' || (dialogMode === 'edit' && field.disableOnEdit)"
                         />
 
                         <p v-if="formErrors[field.key]" class="text-xs text-destructive mt-0.5">
@@ -800,6 +901,7 @@ const totalPages = computed(() => pagination.value.last_page);
                                     :placeholder="field.placeholder"
                                     rows="3"
                                     class="flex w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    :disabled="dialogMode === 'edit' && field.disableOnEdit"
                                 />
 
                                 <!-- Select inside advanced -->
@@ -808,6 +910,7 @@ const totalPages = computed(() => pagination.value.last_page);
                                     :id="`field-${field.key}`"
                                     v-model="formData[field.key]"
                                     class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    :disabled="dialogMode === 'edit' && field.disableOnEdit"
                                 >
                                     <option value="" disabled>Pilih {{ field.label }}</option>
                                     <option
@@ -825,6 +928,7 @@ const totalPages = computed(() => pagination.value.last_page);
                                     v-model="formData[field.key] as string"
                                     :placeholder="field.placeholder || (field.type === 'tags' ? 'Pisahkan dengan koma, contoh: gluten, dairy' : '')"
                                     class="h-10 rounded-lg focus-visible:ring-brand-500 text-sm"
+                                    :disabled="field.key === 'qty' || (dialogMode === 'edit' && field.disableOnEdit)"
                                 />
 
                                 <p v-if="formErrors[field.key]" class="text-xs text-destructive mt-0.5">

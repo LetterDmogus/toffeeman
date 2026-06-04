@@ -133,11 +133,38 @@ const authLoading = ref(false)
 
 // ── Computed ──────────────────────────────────────────────────────────────
 const filteredItems = computed(() => {
+    const pkgs = props.packages?.map(p => ({ ...p, isPackage: true })) || []
+    if (activeCategory.value === 'paket') {
+        return pkgs
+    }
     if (!activeCategory.value) {
-return props.menuItems
-}
+        return [...(props.menuItems || []), ...pkgs]
+    }
+    return (props.menuItems || []).filter(i => i.category_id === activeCategory.value)
+})
 
-    return props.menuItems.filter(i => i.category_id === activeCategory.value)
+const groupedItems = computed(() => {
+    const items = filteredItems.value
+    const groups = {}
+    
+    items.forEach(item => {
+        let key = ''
+        if (item.isPackage) {
+            key = 'Paket Spesial'
+        } else {
+            key = item.category?.name || 'Lain-lain'
+        }
+        
+        if (!groups[key]) {
+            groups[key] = []
+        }
+        groups[key].push(item)
+    })
+    
+    return Object.entries(groups).map(([name, list]) => ({
+        name,
+        items: list
+    }))
 })
 
 const cartCount = computed(() => cart.value.reduce((s, i) => s + i.qty, 0))
@@ -337,8 +364,12 @@ return
         })
 
         if (!res.ok) {
-throw new Error('Gagal mengirim pesanan')
-}
+            if (res.status === 422) {
+                const errData = await res.json()
+                throw new Error(errData.message || 'Stok tidak mencukupi untuk pesanan Anda.')
+            }
+            throw new Error('Gagal mengirim pesanan. Silakan coba lagi.')
+        }
 
         const data = await res.json()
         submittedOrder.value = data
@@ -352,8 +383,8 @@ throw new Error('Gagal mengirim pesanan')
         cart.value = []
         isCartOpen.value = false
         startOrderPolling()
-    } catch (e) {
-        alert('Gagal mengirim pesanan. Silakan coba lagi.')
+    } catch (e: any) {
+        alert(e.message || 'Gagal mengirim pesanan. Silakan coba lagi.')
     } finally {
         isSubmitting.value = false
     }
@@ -431,6 +462,10 @@ const statusMap = {
     ready: { label: 'Siap disajikan', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
     served: { label: 'Sudah disajikan', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' }
 }
+
+function getStepIndex(status: string) {
+    return ['pending', 'preparing', 'ready', 'served'].indexOf(status)
+}
 </script>
 
 <style>
@@ -446,30 +481,32 @@ const statusMap = {
     <div class="flex flex-col min-h-[100dvh] bg-background text-foreground max-w-md md:max-w-4xl lg:max-w-6xl xl:max-w-7xl mx-auto relative md:border-x font-garamond shadow-2xl">
         
         <!-- Header -->
-        <header class="sticky top-0 z-40 flex items-center justify-between px-4 md:px-6 py-3 bg-background/90 backdrop-blur-md border-b">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                    <UtensilsCrossed class="w-5 h-5" />
-                </div>
-                <div>
-                    <h1 class="font-bold text-base md:text-xl tracking-tight">Self Order</h1>
-                    <div class="text-xs md:text-sm text-muted-foreground font-medium">Meja {{ table.number }}<span v-if="table.name"> · {{ table.name }}</span></div>
+        <header class="sticky top-0 z-40 flex flex-col md:flex-row md:items-center justify-between px-4 md:px-6 py-3 bg-background/90 backdrop-blur-md border-b gap-3 md:gap-0">
+            <div class="flex items-center justify-between md:justify-start gap-3 w-full md:w-auto">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <UtensilsCrossed class="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-base md:text-xl tracking-tight">Self Order</h1>
+                        <div class="text-xs md:text-sm text-muted-foreground font-medium">Meja {{ table.number }}<span v-if="table.name"> · {{ table.name }}</span></div>
+                    </div>
                 </div>
             </div>
-            <div class="flex gap-2">
+            <div class="flex items-center justify-end gap-2 w-full md:w-auto border-t pt-2 md:border-t-0 md:pt-0">
                 <template v-if="customer">
-                    <Button variant="ghost" size="sm" class="h-8 md:h-10 px-3 font-garamond font-semibold text-sm md:text-base" @click="router.visit(`/kiosk/${token}/orders`)">
+                    <Button variant="ghost" size="sm" class="h-8 md:h-10 px-3 font-garamond font-semibold text-sm md:text-base flex-1 md:flex-none justify-center" @click="router.visit(`/kiosk/${token}/orders`)">
                         <History class="w-4 h-4 md:w-5 md:h-5 mr-1" /> Riwayat
                     </Button>
-                    <Button variant="ghost" size="sm" class="h-8 md:h-10 px-3 text-destructive hover:text-destructive hover:bg-destructive/10" @click="logout">
+                    <Button variant="ghost" size="sm" class="h-8 md:h-10 px-3 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0" @click="logout">
                         <LogOut class="w-4 h-4 md:w-5 md:h-5" />
                     </Button>
                 </template>
                 <template v-else>
-                    <Button v-if="guestOrders.length > 0" variant="ghost" size="sm" class="h-8 md:h-10 px-3 font-garamond font-semibold text-sm md:text-base" @click="openGuestHistory">
+                    <Button v-if="guestOrders.length > 0" variant="ghost" size="sm" class="h-8 md:h-10 px-3 font-garamond font-semibold text-sm md:text-base flex-1 md:flex-none justify-center" @click="openGuestHistory">
                         <History class="w-4 h-4 md:w-5 md:h-5 mr-1" /> Pesanan
                     </Button>
-                    <Button variant="outline" size="sm" class="h-8 md:h-10 px-4 font-garamond font-semibold text-sm md:text-base" @click="isAuthModalOpen = true; authMode = 'login'">
+                    <Button variant="outline" size="sm" class="h-8 md:h-10 px-4 font-garamond font-semibold text-sm md:text-base flex-1 md:flex-none justify-center" @click="isAuthModalOpen = true; authMode = 'login'">
                         Masuk / Daftar
                     </Button>
                 </template>
@@ -486,9 +523,44 @@ const statusMap = {
                 <p class="text-xl md:text-2xl text-primary font-bold tracking-widest mb-2">{{ submittedOrder.order_number }}</p>
                 <p class="text-base md:text-lg text-muted-foreground mb-6">Silakan tunggu, pesananmu sedang diproses dapur.</p>
                 
-                <div class="inline-flex px-4 py-2 md:px-6 md:py-3 rounded-full text-sm md:text-base font-semibold mb-8" 
+                <div class="inline-flex px-4 py-2 md:px-6 md:py-3 rounded-full text-sm md:text-base font-semibold mb-6" 
                      :class="statusMap[submittedOrder.status]?.color || 'bg-secondary text-secondary-foreground'">
                     {{ statusMap[submittedOrder.status]?.label ?? submittedOrder.status }}
+                </div>
+
+                <!-- Stepper Progress -->
+                <div v-if="getStepIndex(submittedOrder.status) !== -1" class="w-full max-w-sm mx-auto mb-8 bg-secondary/30 border rounded-2xl p-5 space-y-4">
+                    <div class="relative flex items-center justify-between">
+                        <!-- Connecting Line -->
+                        <div class="absolute left-[12.5%] right-[12.5%] top-3.5 h-0.5 bg-muted -z-10">
+                            <div 
+                                class="h-full bg-primary transition-all duration-500" 
+                                :style="{ width: (getStepIndex(submittedOrder.status) / 3 * 100) + '%' }"
+                            ></div>
+                        </div>
+                        
+                        <!-- Steps -->
+                        <div 
+                            v-for="(step, idx) in ['pending', 'preparing', 'ready', 'served']" 
+                            :key="step"
+                            class="flex flex-col items-center flex-1 relative"
+                        >
+                            <div 
+                                class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300"
+                                :class="getStepIndex(submittedOrder.status) >= idx 
+                                    ? 'bg-primary text-primary-foreground shadow-sm scale-110' 
+                                    : 'bg-muted text-muted-foreground'"
+                            >
+                                <span class="relative z-10">{{ idx + 1 }}</span>
+                            </div>
+                            <span 
+                                class="text-[10px] md:text-xs mt-2 font-semibold text-center transition-colors"
+                                :class="getStepIndex(submittedOrder.status) >= idx ? 'text-primary font-bold' : 'text-muted-foreground'"
+                            >
+                                {{ step === 'pending' ? 'Diterima' : step === 'preparing' ? 'Dimasak' : step === 'ready' ? 'Siap' : 'Disajikan' }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
                 
                 <Button class="w-full h-12 md:h-14 rounded-xl text-lg md:text-xl font-garamond font-bold tracking-wide" @click="clearActiveOrder">
@@ -499,40 +571,34 @@ const statusMap = {
 
         <!-- Main Content -->
         <main v-else class="flex-1 pb-32">
-            <!-- Packages Banners -->
-            <div class="px-4 md:px-6 pt-4 pb-2" v-if="packages && packages.length">
-                <h2 class="font-bold text-lg md:text-xl mb-3 px-1">Paket Spesial</h2>
-                <div class="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 scrollbar-none [&::-webkit-scrollbar]:hidden">
-                    <div 
-                        v-for="pkg in packages" 
-                        :key="pkg.id" 
-                        @click="openItem(pkg, true)"
-                        class="shrink-0 w-[85vw] md:w-[600px] aspect-[21/9] md:aspect-[5/1] bg-secondary rounded-2xl md:rounded-3xl overflow-hidden relative flex items-center justify-center shadow-sm snap-center cursor-pointer group"
-                    >
-                        <div class="absolute inset-0 bg-gradient-to-r from-primary/90 to-primary/40 mix-blend-multiply transition-opacity group-hover:opacity-90"></div>
-                        <img v-if="pkg.image_url" :src="pkg.image_url" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700" :alt="pkg.name" />
-                        <img v-else src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=1200" class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700" alt="Promo" />
-                        
-                        <div class="relative z-10 w-full h-full flex flex-col justify-center p-4 md:p-6 text-white drop-shadow-md">
-                            <Badge class="self-start mb-1 md:mb-2 bg-white/20 text-white hover:bg-white/30 backdrop-blur-md border-none font-garamond uppercase tracking-widest text-[10px]">Paket Spesial</Badge>
-                            <h2 class="text-2xl md:text-3xl font-bold mb-1 line-clamp-1">{{ pkg.name }}</h2>
-                            <div class="flex items-center justify-between mt-auto">
-                                <p class="text-white/90 text-sm md:text-base font-medium line-clamp-1 flex-1 pr-4">{{ pkg.description || 'Pesan paket hemat ini sekarang!' }}</p>
-                                <span class="font-bold text-lg md:text-xl bg-white/20 px-3 py-1 rounded-full backdrop-blur-md">{{ formatRp(pkg.price) }}</span>
-                            </div>
-                        </div>
+            <!-- Promo Banner -->
+            <div class="px-4 md:px-6 pt-4 pb-2">
+                <div class="w-full aspect-[21/9] md:aspect-[5/1] bg-secondary rounded-2xl md:rounded-3xl overflow-hidden relative flex items-center justify-center shadow-sm">
+                    <div class="absolute inset-0 bg-gradient-to-r from-primary/80 to-primary/30 mix-blend-multiply"></div>
+                    <img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&q=80&w=1200" class="absolute inset-0 w-full h-full object-cover opacity-60" alt="Promo Kiosk" />
+                    <div class="relative z-10 w-full h-full flex flex-col justify-center p-4 md:p-6 text-white drop-shadow-md">
+                        <Badge class="self-start mb-1 md:mb-2 bg-white/20 text-white hover:bg-white/30 backdrop-blur-md border-none font-garamond uppercase tracking-widest text-[10px]">Promo Kiosk</Badge>
+                        <h2 class="text-2xl md:text-3xl font-bold mb-1">Diskon Khusus Self-Order!</h2>
+                        <p class="text-white/95 text-sm md:text-base font-medium">Nikmati kemudahan pesan langsung dari meja Anda.</p>
                     </div>
                 </div>
             </div>
 
             <!-- Category Tabs -->
-            <div class="flex gap-2 p-4 md:px-6 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden sticky top-[60px] md:top-[64px] bg-background/95 backdrop-blur-sm z-30 border-b">
+            <div class="flex gap-2 p-4 md:px-6 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden sticky top-[112px] md:top-[64px] bg-background/95 backdrop-blur-sm z-30 border-b">
                 <button
                     class="shrink-0 px-5 py-2 md:px-6 md:py-2.5 rounded-full text-base md:text-lg font-semibold transition-colors border-2"
                     :class="activeCategory === null ? 'bg-primary/10 text-primary border-primary' : 'bg-background text-muted-foreground border-border hover:bg-secondary'"
                     @click="activeCategory = null"
                 >
                     Semua
+                </button>
+                <button
+                    class="shrink-0 px-5 py-2 md:px-6 md:py-2.5 rounded-full text-base md:text-lg font-semibold transition-colors border-2"
+                    :class="activeCategory === 'paket' ? 'bg-primary/10 text-primary border-primary' : 'bg-background text-muted-foreground border-border hover:bg-secondary'"
+                    @click="activeCategory = 'paket'"
+                >
+                    Paket
                 </button>
                 <button
                     v-for="cat in categories"
@@ -545,30 +611,44 @@ const statusMap = {
                 </button>
             </div>
 
-            <!-- Menu List / Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 px-4 md:px-6 pt-4">
-                <div 
-                    v-for="item in filteredItems" 
-                    :key="item.id" 
-                    class="flex flex-row md:flex-col items-stretch gap-4 md:gap-0 py-4 md:py-0 border-b md:border md:rounded-2xl md:overflow-hidden md:bg-card md:shadow-sm cursor-pointer group hover:border-primary/40 transition-colors"
-                    @click="openItem(item)"
-                >
-                    <div class="relative w-24 h-24 md:w-full md:h-48 md:aspect-[4/3] shrink-0 rounded-2xl md:rounded-none bg-secondary/50 overflow-hidden shadow-sm md:shadow-none">
-                        <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                        <UtensilsCrossed v-else class="w-8 h-8 md:w-12 md:h-12 text-muted-foreground/30 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                    </div>
-                    
-                    <div class="flex-1 flex flex-col justify-between py-1 md:p-4">
-                        <div>
-                            <h3 class="font-bold text-lg md:text-xl leading-tight mb-1 md:mb-2 group-hover:text-primary transition-colors">{{ item.name }}</h3>
-                            <p class="text-sm md:text-base text-muted-foreground line-clamp-2 md:line-clamp-3 leading-snug mb-2 font-medium">{{ item.description }}</p>
-                        </div>
-                        
-                        <div class="flex items-center justify-between mt-auto md:mt-4">
-                            <div class="font-bold text-primary text-base md:text-xl">{{ formatRp(item.price) }}</div>
-                            <Button size="sm" variant="outline" class="h-8 md:h-10 rounded-full px-4 border-primary text-primary group-hover:bg-primary group-hover:text-primary-foreground font-garamond font-bold md:text-base transition-colors">
-                                Tambah
-                            </Button>
+            <!-- Menu List / Grid Grouped by Category -->
+            <div class="space-y-8 px-4 md:px-6 pt-6">
+                <div v-for="group in groupedItems" :key="group.name" class="space-y-4">
+                    <h2 class="font-bold text-xl md:text-2xl border-b pb-2 text-primary font-garamond">{{ group.name }}</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div 
+                            v-for="item in group.items" 
+                            :key="item.id" 
+                            class="flex flex-row md:flex-col items-stretch gap-4 md:gap-0 py-4 md:py-0 border-b md:border md:rounded-2xl md:overflow-hidden md:bg-card md:shadow-sm cursor-pointer group hover:border-primary/40 transition-colors"
+                            @click="openItem(item, item.isPackage)"
+                        >
+                            <div class="relative w-24 h-24 md:w-full md:h-48 md:aspect-[4/3] shrink-0 rounded-2xl md:rounded-none bg-secondary/50 overflow-hidden shadow-sm md:shadow-none">
+                                <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                <UtensilsCrossed v-else class="w-8 h-8 md:w-12 md:h-12 text-muted-foreground/30 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                                <Badge v-if="item.isPackage" class="absolute top-2 right-2 bg-primary text-primary-foreground font-garamond uppercase tracking-wider text-[9px] px-2 py-0.5 shadow-sm">
+                                    Paket
+                                </Badge>
+                            </div>
+                            
+                            <div class="flex-1 flex flex-col justify-between py-1 md:p-4">
+                                <div>
+                                    <h3 class="font-bold text-lg md:text-xl leading-tight mb-1 group-hover:text-primary transition-colors">{{ item.name }}</h3>
+                                    <p v-if="!item.isPackage" class="text-sm md:text-base text-muted-foreground line-clamp-2 md:line-clamp-3 leading-snug mb-2 font-medium">{{ item.description }}</p>
+                                    <div v-else-if="item.package_items && item.package_items.length" class="text-xs md:text-sm text-muted-foreground mb-3 space-y-0.5 font-medium">
+                                        <div v-for="pkgItem in item.package_items" :key="pkgItem.id" class="flex items-center gap-1">
+                                            <span class="font-semibold text-primary/80">{{ pkgItem.qty }}x</span>
+                                            <span>{{ pkgItem.menu_item?.name || pkgItem.inventory_item?.name }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between mt-auto md:mt-4">
+                                    <div class="font-bold text-primary text-base md:text-xl">{{ formatRp(item.price) }}</div>
+                                    <Button size="sm" variant="outline" class="h-8 md:h-10 rounded-full px-4 border-primary text-primary group-hover:bg-primary group-hover:text-primary-foreground font-garamond font-bold md:text-base transition-colors">
+                                        Tambah
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -704,6 +784,36 @@ const statusMap = {
                                 <Badge variant="outline" class="font-garamond text-sm px-2.5 py-1 text-blue-600 border-blue-200 bg-blue-50 dark:bg-blue-950/30" v-if="selectedItem?.tags?.length">
                                     <Tag class="w-3.5 h-3.5 mr-1" /> {{ selectedItem.tags.join(', ') }}
                                 </Badge>
+                            </div>
+                        </div>
+
+                        <!-- Package Items -->
+                        <div v-if="selectedItem?.isPackage && selectedItem?.package_items?.length" class="space-y-3 md:space-y-4">
+                            <Label class="text-lg md:text-xl font-bold">Isi Paket</Label>
+                            <div class="border rounded-2xl divide-y overflow-hidden bg-muted/20">
+                                <div
+                                    v-for="item in selectedItem.package_items"
+                                    :key="item.id"
+                                    class="flex items-center justify-between px-5 py-4 font-garamond"
+                                >
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                                            <UtensilsCrossed v-if="item.menu_item" class="w-5 h-5 text-muted-foreground/60" />
+                                            <ShoppingBag v-else class="w-5 h-5 text-muted-foreground/60" />
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="font-bold text-base md:text-lg">
+                                                {{ item.menu_item?.name || item.inventory_item?.name }}
+                                            </span>
+                                            <span v-if="item.notes" class="text-xs md:text-sm text-muted-foreground italic">
+                                                * {{ item.notes }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span class="font-bold text-base md:text-lg bg-primary/10 text-primary px-3 py-1 rounded-full">
+                                        {{ item.qty }}x
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
@@ -861,6 +971,41 @@ const statusMap = {
                                     <span v-for="item in order.items" :key="item.id">
                                         {{ item.qty }}× {{ item.name }}
                                     </span>
+                                </div>
+                                
+                                <!-- Stepper Progress for active order -->
+                                <div v-if="getStepIndex(order.status) !== -1" class="mb-4 md:mb-5 pt-3 border-t space-y-2">
+                                    <div class="relative flex items-center justify-between px-1">
+                                        <!-- Connecting Line -->
+                                        <div class="absolute left-[12.5%] right-[12.5%] top-3 h-0.5 bg-muted -z-10">
+                                            <div 
+                                                class="h-full bg-primary transition-all duration-500" 
+                                                :style="{ width: (getStepIndex(order.status) / 3 * 100) + '%' }"
+                                            ></div>
+                                        </div>
+                                        
+                                        <!-- Steps -->
+                                        <div 
+                                            v-for="(step, idx) in ['pending', 'preparing', 'ready', 'served']" 
+                                            :key="step"
+                                            class="flex flex-col items-center flex-1 relative"
+                                        >
+                                            <div 
+                                                class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300"
+                                                :class="getStepIndex(order.status) >= idx 
+                                                    ? 'bg-primary text-primary-foreground shadow-sm scale-110' 
+                                                    : 'bg-muted text-muted-foreground'"
+                                            >
+                                                <span class="relative z-10">{{ idx + 1 }}</span>
+                                            </div>
+                                            <span 
+                                                class="text-[9px] md:text-[10px] mt-1 font-semibold text-center transition-colors"
+                                                :class="getStepIndex(order.status) >= idx ? 'text-primary font-bold' : 'text-muted-foreground'"
+                                            >
+                                                {{ step === 'pending' ? 'Diterima' : step === 'preparing' ? 'Dimasak' : step === 'ready' ? 'Siap' : 'Disajikan' }}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="flex justify-between items-center pt-3 md:pt-4 border-t">
                                     <span class="font-bold text-base md:text-lg">{{ formatRp(order.final_amount) }}</span>

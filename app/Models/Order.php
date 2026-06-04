@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Order extends Model
 {
-    /** @use HasFactory<\Database\Factories\OrderFactory> */
+    /** @use HasFactory<OrderFactory> */
     use HasFactory, SoftDeletes;
 
     protected $guarded = [];
@@ -16,6 +17,25 @@ class Order extends Model
     protected $casts = [
         'payment_metadata' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::updated(function (Order $order) {
+            // Revert stock if order is cancelled
+            if ($order->isDirty('status') && $order->status === 'cancelled') {
+                foreach ($order->items as $item) {
+                    $item->restoreStock();
+                }
+            }
+
+            // Deduct stock if order was cancelled and now restored
+            if ($order->isDirty('status') && $order->getOriginal('status') === 'cancelled' && $order->status !== 'cancelled') {
+                foreach ($order->items as $item) {
+                    $item->deductStock();
+                }
+            }
+        });
+    }
 
     public function items()
     {
