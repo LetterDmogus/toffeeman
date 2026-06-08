@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
-import { dashboard } from '@/routes';
-import catalog from '@/routes/catalog';
-import { ArrowRight, Database, ShoppingCart, UserCheck } from 'lucide-vue-next';
+import { Head, Link } from "@inertiajs/vue3";
+import { ArrowRight, Database, ShoppingCart, UserCheck } from "lucide-vue-next";
+import { dashboard } from "@/routes";
+import catalog from "@/routes/catalog";
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            {
-                title: 'Dashboard',
-                href: dashboard().url,
-            },
-        ],
-    },
+	layout: {
+		breadcrumbs: [
+			{
+				title: "Dashboard",
+				href: dashboard().url,
+			},
+		],
+	},
 });
 </script>
 

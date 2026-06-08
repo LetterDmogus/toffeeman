@@ -1,84 +1,86 @@
 <script setup lang="ts">
-import { Head, Link } from '@inertiajs/vue3';
-import { ref, onMounted, watch, computed } from 'vue';
-import { 
-    BarChart3, 
-    Calendar, 
-    Download, 
-    Printer, 
-    TrendingUp, 
-    DollarSign, 
-    Receipt, 
-    ShoppingBag, 
-    Search,
-    RefreshCw,
-    ChevronLeft,
-    ChevronRight,
-    ArrowUpRight,
-    ArrowDownRight,
-    Loader2
-} from 'lucide-vue-next';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { dashboard, reports } from '@/routes';
-import Chart from 'chart.js/auto';
+import { Head, Link } from "@inertiajs/vue3";
+import Chart from "chart.js/auto";
+import {
+	ArrowDownRight,
+	ArrowUpRight,
+	BarChart3,
+	Calendar,
+	ChevronLeft,
+	ChevronRight,
+	DollarSign,
+	Download,
+	Loader2,
+	Printer,
+	Receipt,
+	RefreshCw,
+	Search,
+	ShoppingBag,
+	TrendingUp,
+} from "lucide-vue-next";
+import { computed, onMounted, ref, watch } from "vue";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { dashboard, reports } from "@/routes";
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            { title: 'Dashboard', href: dashboard().url },
-            { title: 'Laporan Keuangan', href: '#' }
-        ]
-    }
+	layout: {
+		breadcrumbs: [
+			{ title: "Dashboard", href: dashboard().url },
+			{ title: "Laporan Keuangan", href: "#" },
+		],
+	},
 });
 
 // Date Range Filter
 const isMounted = ref(false);
-const startDate = ref('');
-const endDate = ref('');
+const startDate = ref("");
+const endDate = ref("");
 
-const reportType = ref('monthly'); // 'daily', 'weekly', 'monthly'
-const selectedDate = ref(new Date().toISOString().split('T')[0]);
+const reportType = ref("monthly"); // 'daily', 'weekly', 'monthly'
+const selectedDate = ref(new Date().toISOString().split("T")[0]);
 const selectedMonth = ref(new Date().toISOString().slice(0, 7)); // YYYY-MM
-const selectedWeek = ref('1');
+const selectedWeek = ref("1");
 const selectedMonthOnly = ref(new Date().toISOString().slice(0, 7)); // YYYY-MM
-const financialView = ref('all'); // 'all' (Gabungan), 'income' (Pemasukan), 'expense' (Pengeluaran)
+const financialView = ref("all"); // 'all' (Gabungan), 'income' (Pemasukan), 'expense' (Pengeluaran)
 
 const updateDateRange = () => {
-    if (reportType.value === 'daily') {
-        startDate.value = selectedDate.value;
-        endDate.value = selectedDate.value;
-    } else if (reportType.value === 'weekly') {
-        const [year, month] = selectedMonth.value.split('-').map(Number);
-        const week = Number(selectedWeek.value);
-        
-        let startDay = 1 + (week - 1) * 7;
-        let endDay = startDay + 6;
-        
-        const lastDayOfMonth = new Date(year, month, 0).getDate();
-        if (startDay > lastDayOfMonth) {
-            startDay = lastDayOfMonth;
-        }
-        if (endDay > lastDayOfMonth) {
-            endDay = lastDayOfMonth;
-        }
-        
-        const start = new Date(year, month - 1, startDay);
-        const end = new Date(year, month - 1, endDay);
-        
-        const pad = (n: number) => n.toString().padStart(2, '0');
-        startDate.value = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
-        endDate.value = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
-    } else if (reportType.value === 'monthly') {
-        const [year, month] = selectedMonthOnly.value.split('-').map(Number);
-        const first = new Date(year, month - 1, 1);
-        const last = new Date(year, month, 0);
-        
-        const pad = (n: number) => n.toString().padStart(2, '0');
-        startDate.value = `${first.getFullYear()}-${pad(first.getMonth() + 1)}-${pad(first.getDate())}`;
-        endDate.value = `${last.getFullYear()}-${pad(last.getMonth() + 1)}-${pad(last.getDate())}`;
-    }
+	if (reportType.value === "daily") {
+		startDate.value = selectedDate.value;
+		endDate.value = selectedDate.value;
+	} else if (reportType.value === "weekly") {
+		const [year, month] = selectedMonth.value.split("-").map(Number);
+		const week = Number(selectedWeek.value);
+
+		let startDay = 1 + (week - 1) * 7;
+		let endDay = startDay + 6;
+
+		const lastDayOfMonth = new Date(year, month, 0).getDate();
+
+		if (startDay > lastDayOfMonth) {
+			startDay = lastDayOfMonth;
+		}
+
+		if (endDay > lastDayOfMonth) {
+			endDay = lastDayOfMonth;
+		}
+
+		const start = new Date(year, month - 1, startDay);
+		const end = new Date(year, month - 1, endDay);
+
+		const pad = (n: number) => n.toString().padStart(2, "0");
+		startDate.value = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
+		endDate.value = `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`;
+	} else if (reportType.value === "monthly") {
+		const [year, month] = selectedMonthOnly.value.split("-").map(Number);
+		const first = new Date(year, month - 1, 1);
+		const last = new Date(year, month, 0);
+
+		const pad = (n: number) => n.toString().padStart(2, "0");
+		startDate.value = `${first.getFullYear()}-${pad(first.getMonth() + 1)}-${pad(first.getDate())}`;
+		endDate.value = `${last.getFullYear()}-${pad(last.getMonth() + 1)}-${pad(last.getDate())}`;
+	}
 };
 
 // Initialize dates
@@ -87,11 +89,11 @@ updateDateRange();
 // Dashboard Data
 const loadingDashboard = ref(false);
 const kpi = ref({
-    total_revenue: 0,
-    total_expense: 0,
-    total_transactions: 0,
-    avg_order_value: 0,
-    net_profit: 0
+	total_revenue: 0,
+	total_expense: 0,
+	total_transactions: 0,
+	avg_order_value: 0,
+	net_profit: 0,
 });
 const trend = ref<any[]>([]);
 const paymentMethods = ref<any[]>([]);
@@ -100,28 +102,28 @@ const topItems = ref<any[]>([]);
 // Transaction Table
 const loadingTransactions = ref(false);
 const transactions = ref<any[]>([]);
-const search = ref('');
-const filterType = ref('');
-const filterPayment = ref('');
+const search = ref("");
+const filterType = ref("");
+const filterPayment = ref("");
 const pagination = ref({
-    current_page: 1,
-    last_page: 1,
-    from: 0,
-    to: 0,
-    total: 0
+	current_page: 1,
+	last_page: 1,
+	from: 0,
+	to: 0,
+	total: 0,
 });
 
 // Extra Report Controls
-const chartType = ref<'line' | 'bar'>('line');
+const chartType = ref<"line" | "bar">("line");
 const visibleColumns = ref<Record<string, boolean>>({
-    transaction_number: true,
-    type: true,
-    category: true,
-    description: true,
-    payment_method: true,
-    amount: true,
-    transaction_date: true,
-    user: true
+	transaction_number: true,
+	type: true,
+	category: true,
+	description: true,
+	payment_method: true,
+	amount: true,
+	transaction_date: true,
+	user: true,
 });
 const showColumnDropdown = ref(false);
 
@@ -132,332 +134,374 @@ let itemsChartInstance: any = null;
 
 // Format Rupiah Helper
 const formatIDR = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    }).format(value);
+	return new Intl.NumberFormat("id-ID", {
+		style: "currency",
+		currency: "IDR",
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 0,
+	}).format(value);
 };
 
 // Watchers
-watch([reportType, selectedDate, selectedMonth, selectedWeek, selectedMonthOnly], () => {
-    updateDateRange();
-    fetchReportData();
-});
+watch(
+	[reportType, selectedDate, selectedMonth, selectedWeek, selectedMonthOnly],
+	() => {
+		updateDateRange();
+		fetchReportData();
+	},
+);
 
 watch(financialView, (newVal) => {
-    filterType.value = newVal === 'all' ? '' : newVal;
-    renderTrendChart();
-    fetchTransactions(1);
+	filterType.value = newVal === "all" ? "" : newVal;
+	renderTrendChart();
+	fetchTransactions(1);
 });
 
 watch(filterType, (newVal) => {
-    const targetView = newVal === '' ? 'all' : newVal;
-    if (financialView.value !== targetView) {
-        financialView.value = targetView;
-    }
+	const targetView = newVal === "" ? "all" : newVal;
+
+	if (financialView.value !== targetView) {
+		financialView.value = targetView;
+	}
 });
 
 // Fetch Dashboard & Transactions Data
 const fetchReportData = async () => {
-    if (!isMounted.value) return;
-    loadingDashboard.value = true;
-    try {
-        const queryParams = new URLSearchParams({
-            start_date: startDate.value,
-            end_date: endDate.value
-        });
-        const res = await fetch(`/api/reports/dashboard?${queryParams.toString()}`);
-        if (res.ok) {
-            const data = await res.json();
-            kpi.value = data.kpi;
-            trend.value = data.trend;
-            paymentMethods.value = data.payment_methods;
-            topItems.value = data.top_items;
-            
-            // Re-render Charts
-            renderTrendChart();
-            renderPaymentChart();
-            renderItemsChart();
-        }
-    } catch (e) {
-        console.error('Error loading dashboard data:', e);
-    } finally {
-        loadingDashboard.value = false;
-    }
+	if (!isMounted.value) {
+		return;
+	}
 
-    // Refresh transactions table too
-    fetchTransactions(1);
+	loadingDashboard.value = true;
+
+	try {
+		const queryParams = new URLSearchParams({
+			start_date: startDate.value,
+			end_date: endDate.value,
+		});
+		const res = await fetch(`/api/reports/dashboard?${queryParams.toString()}`);
+
+		if (res.ok) {
+			const data = await res.json();
+			kpi.value = data.kpi;
+			trend.value = data.trend;
+			paymentMethods.value = data.payment_methods;
+			topItems.value = data.top_items;
+
+			// Re-render Charts
+			renderTrendChart();
+			renderPaymentChart();
+			renderItemsChart();
+		}
+	} catch (e) {
+		console.error("Error loading dashboard data:", e);
+	} finally {
+		loadingDashboard.value = false;
+	}
+
+	// Refresh transactions table too
+	fetchTransactions(1);
 };
 
 const fetchTransactions = async (page = 1) => {
-    loadingTransactions.value = true;
-    try {
-        const queryParams = new URLSearchParams({
-            start_date: startDate.value,
-            end_date: endDate.value,
-            page: String(page),
-            search: search.value,
-            type: filterType.value,
-            payment_method: filterPayment.value
-        });
-        const res = await fetch(`/api/reports/transactions?${queryParams.toString()}`);
-        if (res.ok) {
-            const data = await res.json();
-            transactions.value = data.data;
-            pagination.value = {
-                current_page: data.current_page,
-                last_page: data.last_page,
-                from: data.from || 0,
-                to: data.to || 0,
-                total: data.total || 0
-            };
-        }
-    } catch (e) {
-        console.error('Error fetching transactions:', e);
-    } finally {
-        loadingTransactions.value = false;
-    }
+	loadingTransactions.value = true;
+
+	try {
+		const queryParams = new URLSearchParams({
+			start_date: startDate.value,
+			end_date: endDate.value,
+			page: String(page),
+			search: search.value,
+			type: filterType.value,
+			payment_method: filterPayment.value,
+		});
+		const res = await fetch(
+			`/api/reports/transactions?${queryParams.toString()}`,
+		);
+
+		if (res.ok) {
+			const data = await res.json();
+			transactions.value = data.data;
+			pagination.value = {
+				current_page: data.current_page,
+				last_page: data.last_page,
+				from: data.from || 0,
+				to: data.to || 0,
+				total: data.total || 0,
+			};
+		}
+	} catch (e) {
+		console.error("Error fetching transactions:", e);
+	} finally {
+		loadingTransactions.value = false;
+	}
 };
 
 const changePage = (page: number) => {
-    if (page < 1 || page > pagination.value.last_page) return;
-    fetchTransactions(page);
+	if (page < 1 || page > pagination.value.last_page) {
+		return;
+	}
+
+	fetchTransactions(page);
 };
 
 // Watch chartType to re-render trend
 watch(chartType, () => {
-    renderTrendChart();
+	renderTrendChart();
 });
 
 // Render Charts Logic
 const renderTrendChart = () => {
-    const ctx: any = document.getElementById('trendChart');
-    if (!ctx) return;
+	const ctx: any = document.getElementById("trendChart");
 
-    if (trendChartInstance) trendChartInstance.destroy();
+	if (!ctx) {
+		return;
+	}
 
-    const labels = trend.value.map(t => t.label || t.date);
-    const values = trend.value.map(t => t.total);
+	if (trendChartInstance) {
+		trendChartInstance.destroy();
+	}
 
-    // Dynamic gradient
-    const chartCtx = ctx.getContext('2d');
-    const gradient = chartCtx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(219, 39, 119, 0.25)'); // Brand color pink-600
-    gradient.addColorStop(1, 'rgba(219, 39, 119, 0)');
+	const labels = trend.value.map((t) => t.label || t.date);
+	const values = trend.value.map((t) => t.total);
 
-    trendChartInstance = new Chart(ctx, {
-        type: chartType.value,
-        data: {
-            labels,
-            datasets: [{
-                label: 'Pendapatan',
-                data: values,
-                borderColor: '#db2777', // Brand-600 pink
-                borderWidth: chartType.value === 'line' ? 3 : 0,
-                backgroundColor: chartType.value === 'line' ? gradient : 'rgba(219, 39, 119, 0.85)',
-                fill: true,
-                tension: 0.35,
-                borderRadius: chartType.value === 'bar' ? 6 : 0,
-                pointBackgroundColor: '#db2777',
-                pointHoverRadius: 7,
-                pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: '#db2777',
-                pointHoverBorderWidth: 3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    padding: 12,
-                    backgroundColor: '#0f172a',
-                    titleFont: { size: 12, weight: 'bold' },
-                    bodyFont: { size: 13, weight: '900' },
-                    displayColors: false,
-                    callbacks: {
-                        label: function(context) {
-                            return ' ' + formatIDR(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#64748b', font: { size: 10, weight: 'bold' } }
-                },
-                y: {
-                    grid: { color: 'rgba(226, 232, 240, 0.4)' },
-                    ticks: {
-                        color: '#64748b',
-                        font: { size: 10, weight: 'bold' },
-                        callback: function(value: any) {
-                            return value >= 1000000 
-                                ? (value / 1000000) + 'jt' 
-                                : value >= 1000 ? (value / 1000) + 'rb' : value;
-                        }
-                    }
-                }
-            }
-        }
-    });
+	// Dynamic gradient
+	const chartCtx = ctx.getContext("2d");
+	const gradient = chartCtx.createLinearGradient(0, 0, 0, 300);
+	gradient.addColorStop(0, "rgba(219, 39, 119, 0.25)"); // Brand color pink-600
+	gradient.addColorStop(1, "rgba(219, 39, 119, 0)");
+
+	trendChartInstance = new Chart(ctx, {
+		type: chartType.value,
+		data: {
+			labels,
+			datasets: [
+				{
+					label: "Pendapatan",
+					data: values,
+					borderColor: "#db2777", // Brand-600 pink
+					borderWidth: chartType.value === "line" ? 3 : 0,
+					backgroundColor:
+						chartType.value === "line" ? gradient : "rgba(219, 39, 119, 0.85)",
+					fill: true,
+					tension: 0.35,
+					borderRadius: chartType.value === "bar" ? 6 : 0,
+					pointBackgroundColor: "#db2777",
+					pointHoverRadius: 7,
+					pointHoverBackgroundColor: "#fff",
+					pointHoverBorderColor: "#db2777",
+					pointHoverBorderWidth: 3,
+				},
+			],
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+			plugins: {
+				legend: { display: false },
+				tooltip: {
+					padding: 12,
+					backgroundColor: "#0f172a",
+					titleFont: { size: 12, weight: "bold" },
+					bodyFont: { size: 13, weight: "900" },
+					displayColors: false,
+					callbacks: {
+						label: (context) => " " + formatIDR(context.parsed.y),
+					},
+				},
+			},
+			scales: {
+				x: {
+					grid: { display: false },
+					ticks: { color: "#64748b", font: { size: 10, weight: "bold" } },
+				},
+				y: {
+					grid: { color: "rgba(226, 232, 240, 0.4)" },
+					ticks: {
+						color: "#64748b",
+						font: { size: 10, weight: "bold" },
+						callback: (value: any) =>
+							value >= 1000000
+								? value / 1000000 + "jt"
+								: value >= 1000
+									? value / 1000 + "rb"
+									: value,
+					},
+				},
+			},
+		},
+	});
 };
 
 const renderPaymentChart = () => {
-    const ctx = document.getElementById('paymentChart') as HTMLCanvasElement;
-    if (!ctx) return;
+	const ctx = document.getElementById("paymentChart") as HTMLCanvasElement;
 
-    if (paymentChartInstance) paymentChartInstance.destroy();
+	if (!ctx) {
+		return;
+	}
 
-    const methodsMap: Record<string, string> = {
-        cash: 'Tunai',
-        qris: 'QRIS',
-        transfer: 'Transfer Bank'
-    };
+	if (paymentChartInstance) {
+		paymentChartInstance.destroy();
+	}
 
-    const labels = paymentMethods.value.map(p => methodsMap[p.payment_method] || p.payment_method);
-    const values = paymentMethods.value.map(p => p.total);
+	const methodsMap: Record<string, string> = {
+		cash: "Tunai",
+		qris: "QRIS",
+		transfer: "Transfer Bank",
+	};
 
-    paymentChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels,
-            datasets: [{
-                data: values,
-                backgroundColor: [
-                    '#10b981', // emerald-500 for cash
-                    '#6366f1', // indigo-500 for qris
-                    '#db2777'  // pink-600 for bank
-                ],
-                borderWidth: 4,
-                borderColor: '#ffffff',
-                hoverOffset: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        color: '#475569',
-                        font: { size: 11, weight: 'bold' },
-                        padding: 16,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    padding: 12,
-                    backgroundColor: '#0f172a',
-                    callbacks: {
-                        label: function(context) {
-                            return ' ' + formatIDR(context.parsed as number);
-                        }
-                    }
-                }
-            },
-            cutout: '65%'
-        }
-    });
+	const labels = paymentMethods.value.map(
+		(p) => methodsMap[p.payment_method] || p.payment_method,
+	);
+	const values = paymentMethods.value.map((p) => p.total);
+
+	paymentChartInstance = new Chart(ctx, {
+		type: "doughnut",
+		data: {
+			labels,
+			datasets: [
+				{
+					data: values,
+					backgroundColor: [
+						"#10b981", // emerald-500 for cash
+						"#6366f1", // indigo-500 for qris
+						"#db2777", // pink-600 for bank
+					],
+					borderWidth: 4,
+					borderColor: "#ffffff",
+					hoverOffset: 6,
+				},
+			],
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: false,
+			plugins: {
+				legend: {
+					position: "bottom",
+					labels: {
+						color: "#475569",
+						font: { size: 11, weight: "bold" },
+						padding: 16,
+						usePointStyle: true,
+					},
+				},
+				tooltip: {
+					padding: 12,
+					backgroundColor: "#0f172a",
+					callbacks: {
+						label: (context) => " " + formatIDR(context.parsed as number),
+					},
+				},
+			},
+			cutout: "65%",
+		},
+	});
 };
 
 const renderItemsChart = () => {
-    const ctx = document.getElementById('itemsChart') as HTMLCanvasElement;
-    if (!ctx) return;
+	const ctx = document.getElementById("itemsChart") as HTMLCanvasElement;
 
-    if (itemsChartInstance) itemsChartInstance.destroy();
+	if (!ctx) {
+		return;
+	}
 
-    const labels = topItems.value.map(item => item.name);
-    const values = topItems.value.map(item => item.total_qty);
+	if (itemsChartInstance) {
+		itemsChartInstance.destroy();
+	}
 
-    itemsChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                data: values,
-                backgroundColor: '#db2777', // Brand color pink-600
-                borderRadius: 8,
-                barThickness: 16
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    padding: 10,
-                    backgroundColor: '#0f172a',
-                    callbacks: {
-                        label: function(context) {
-                            return ' Terjual ' + context.parsed.x + ' porsi';
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: { color: 'rgba(226, 232, 240, 0.4)' },
-                    ticks: { color: '#64748b', font: { size: 10, weight: 'bold' } }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { color: '#334155', font: { size: 11, weight: 'black' } }
-                }
-            }
-        }
-    });
+	const labels = topItems.value.map((item) => item.name);
+	const values = topItems.value.map((item) => item.total_qty);
+
+	itemsChartInstance = new Chart(ctx, {
+		type: "bar",
+		data: {
+			labels,
+			datasets: [
+				{
+					data: values,
+					backgroundColor: "#db2777", // Brand color pink-600
+					borderRadius: 8,
+					barThickness: 16,
+				},
+			],
+		},
+		options: {
+			indexAxis: "y",
+			responsive: true,
+			maintainAspectRatio: false,
+			plugins: {
+				legend: { display: false },
+				tooltip: {
+					padding: 10,
+					backgroundColor: "#0f172a",
+					callbacks: {
+						label: (context) => " Terjual " + context.parsed.x + " porsi",
+					},
+				},
+			},
+			scales: {
+				x: {
+					grid: { color: "rgba(226, 232, 240, 0.4)" },
+					ticks: { color: "#64748b", font: { size: 10, weight: "bold" } },
+				},
+				y: {
+					grid: { display: false },
+					ticks: { color: "#334155", font: { size: 11, weight: "black" } },
+				},
+			},
+		},
+	});
 };
 
 // Excel Export Logic (Frontend CSV generation)
 const exportToExcel = () => {
-    if (transactions.value.length === 0) {
-        alert('Tidak ada data transaksi untuk diekspor.');
-        return;
-    }
-    
-    // Header
-    let csvContent = "No. Transaksi,Tipe,Kategori,Deskripsi,Metode Bayar,Jumlah (Rp),Tanggal,Kasir\r\n";
-    
-    // Rows
-    transactions.value.forEach(t => {
-        const typeStr = t.type === 'income' ? 'Pemasukan' : 'Pengeluaran';
-        const payStr = t.payment_method ? t.payment_method.toUpperCase() : 'TUNAI';
-        const dateStr = new Date(t.transaction_date).toLocaleString('id-ID');
-        const userStr = t.user?.name || '—';
-        
-        // Clean description from comma
-        const descStr = t.description ? t.description.replace(/,/g, ' ') : '';
-        
-        csvContent += `"${t.transaction_number}","${typeStr}","${t.category}","${descStr}","${payStr}",${t.amount},"${dateStr}","${userStr}"\r\n`;
-    });
-    
-    // Trigger download
-    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Laporan_Transaksi_${startDate.value}_s.d._${endDate.value}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+	if (transactions.value.length === 0) {
+		alert("Tidak ada data transaksi untuk diekspor.");
+
+		return;
+	}
+
+	// Header
+	let csvContent =
+		"No. Transaksi,Tipe,Kategori,Deskripsi,Metode Bayar,Jumlah (Rp),Tanggal,Kasir\r\n";
+
+	// Rows
+	transactions.value.forEach((t) => {
+		const typeStr = t.type === "income" ? "Pemasukan" : "Pengeluaran";
+		const payStr = t.payment_method ? t.payment_method.toUpperCase() : "TUNAI";
+		const dateStr = new Date(t.transaction_date).toLocaleString("id-ID");
+		const userStr = t.user?.name || "—";
+
+		// Clean description from comma
+		const descStr = t.description ? t.description.replace(/,/g, " ") : "";
+
+		csvContent += `"${t.transaction_number}","${typeStr}","${t.category}","${descStr}","${payStr}",${t.amount},"${dateStr}","${userStr}"\r\n`;
+	});
+
+	// Trigger download
+	const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvContent], {
+		type: "text/csv;charset=utf-8;",
+	});
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.setAttribute("href", url);
+	link.setAttribute(
+		"download",
+		`Laporan_Transaksi_${startDate.value}_s.d._${endDate.value}.csv`,
+	);
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
 };
 
 // PDF Print Logic
 const triggerPrint = () => {
-    window.print();
+	window.print();
 };
 
 onMounted(() => {
-    isMounted.value = true;
-    fetchReportData();
+	isMounted.value = true;
+	fetchReportData();
 });
 </script>
 
@@ -465,13 +509,13 @@ onMounted(() => {
     <Head title="Laporan Keuangan" />
 
     <div class="p-6 flex flex-col gap-6 overflow-y-auto w-full custom-scrollbar print:p-0 print:bg-white print:text-black">
-        
+
         <!-- 📑 HEADER & TITLE (Plain layout, no container background) -->
         <div class="flex flex-col gap-1 pb-4 print:hidden">
             <h1 class="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Laporan Keuangan</h1>
             <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Pantau pendapatan, pengeluaran, dan tren pesanan restoran</p>
         </div>
-        
+
         <!-- 📅 FILTERS SECTION (Multiple rows, no background container wrapper) -->
         <div class="flex flex-col gap-4 print:hidden">
             <!-- Row 1: Period Selection -->
@@ -568,7 +612,7 @@ onMounted(() => {
                     <RefreshCw class="h-3.5 w-3.5" :class="loadingDashboard ? 'animate-spin' : ''" />
                     <span>REFRESH</span>
                 </Button>
-                
+
                 <Button @click="exportToExcel" variant="outline" class="h-10 px-4 rounded-xl border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/20 font-black text-xs gap-2">
                     <Download class="h-3.5 w-3.5" />
                     <span>EXCEL</span>
@@ -650,7 +694,7 @@ onMounted(() => {
         </div>
 
         <!-- 📉 GRAPHICS & CHARTS GRID (Hidden on Print) -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 print:hidden">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 print:hidden" :class="financialView === 'expense' ? 'hidden' : 'display'">
             <!-- Tren Pendapatan (Line/Bar Chart) -->
             <div class="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col min-h-[360px] relative">
                 <div v-if="loadingDashboard" class="absolute inset-0 bg-white/60 dark:bg-slate-950/60 z-10 flex items-center justify-center rounded-3xl"><Loader2 class="animate-spin h-8 w-8 text-brand-600" /></div>
@@ -682,7 +726,7 @@ onMounted(() => {
         </div>
 
         <!-- 🏆 TOP 5 MENU (Hidden on Print) -->
-        <div class="grid grid-cols-1 gap-6 print:hidden">
+        <div class="grid grid-cols-1 gap-6 print:hidden" :class="financialView === 'expense' ? 'hidden' : 'display'">
             <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col min-h-[260px] relative">
                 <div v-if="loadingDashboard" class="absolute inset-0 bg-white/60 dark:bg-slate-950/60 z-10 flex items-center justify-center rounded-3xl"><Loader2 class="animate-spin h-8 w-8 text-brand-600" /></div>
                 <div class="flex justify-between items-center mb-4">
@@ -699,7 +743,7 @@ onMounted(() => {
             <!-- Header & Filter -->
             <div class="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
                 <h3 class="font-black text-slate-800 dark:text-slate-100 text-sm uppercase tracking-wider flex items-center gap-2"><Receipt class="h-4 w-4 text-slate-500" /> Buku Kas / Ledger Transaksi</h3>
-                
+
                 <div class="flex flex-wrap items-center gap-3 w-full md:w-auto relative">
                     <!-- Search -->
                     <div class="relative w-full md:w-56">
@@ -814,44 +858,44 @@ onMounted(() => {
                 <span class="text-xs font-semibold text-slate-400">
                     Menampilkan <span class="font-bold text-slate-700 dark:text-slate-300">{{ pagination.from }}</span> sampai <span class="font-bold text-slate-700 dark:text-slate-300">{{ pagination.to }}</span> dari <span class="font-bold text-slate-700 dark:text-slate-300">{{ pagination.total }}</span> transaksi
                 </span>
-                
+
                 <div class="flex items-center gap-1">
-                    <Button 
-                        variant="outline" 
-                        size="icon" 
-                        class="h-8 w-8 rounded-lg cursor-pointer" 
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        class="h-8 w-8 rounded-lg cursor-pointer"
                         :disabled="pagination.current_page === 1 || loadingTransactions"
                         @click="changePage(1)"
                     >
                         <ChevronLeft class="h-4 w-4" />
                     </Button>
-                    <Button 
-                        variant="outline" 
-                        size="icon" 
-                        class="h-8 w-8 rounded-lg cursor-pointer" 
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        class="h-8 w-8 rounded-lg cursor-pointer"
                         :disabled="pagination.current_page === 1 || loadingTransactions"
                         @click="changePage(pagination.current_page - 1)"
                     >
                         <ChevronLeft class="h-4 w-4" />
                     </Button>
-                    
+
                     <span class="text-xs font-black text-slate-500 px-3 select-none">
                         {{ pagination.current_page }} / {{ pagination.last_page }}
                     </span>
-                    
-                    <Button 
-                        variant="outline" 
-                        size="icon" 
-                        class="h-8 w-8 rounded-lg cursor-pointer" 
+
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        class="h-8 w-8 rounded-lg cursor-pointer"
                         :disabled="pagination.current_page === pagination.last_page || loadingTransactions"
                         @click="changePage(pagination.current_page + 1)"
                     >
                         <ChevronRight class="h-4 w-4" />
                     </Button>
-                    <Button 
-                        variant="outline" 
-                        size="icon" 
-                        class="h-8 w-8 rounded-lg cursor-pointer" 
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        class="h-8 w-8 rounded-lg cursor-pointer"
                         :disabled="pagination.current_page === pagination.last_page || loadingTransactions"
                         @click="changePage(pagination.last_page)"
                     >
@@ -872,14 +916,14 @@ onMounted(() => {
         width: 100% !important;
         height: auto !important;
     }
-    
+
     /* Sembunyikan TOTAL seluruh navbar, sidebar, header, dan panel kontrol */
-    header, aside, nav, [role="navigation"], button, .sidebar, 
+    header, aside, nav, [role="navigation"], button, .sidebar,
     [data-sidebar="sidebar"], [data-sidebar="header"], .print\:hidden,
     .bg-brand-600, .bg-slate-900 {
         display: none !important;
     }
-    
+
     /* Sesuaikan main content area agar full-width */
     main, .overflow-y-auto, .flex-col, .rounded-3xl, .shadow-sm {
         width: 100% !important;
@@ -896,7 +940,7 @@ onMounted(() => {
         border-collapse: collapse !important;
         font-size: 10px !important; /* Slightly smaller text for print fitting */
     }
-    
+
     th, td {
         padding: 8px 12px !important;
         border-bottom: 1px solid #cbd5e1 !important;

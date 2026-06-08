@@ -1,21 +1,21 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
-import { cn } from '@/lib/utils'
-import { Check, Minus } from 'lucide-vue-next'
+import { Check, Minus } from "lucide-vue-next";
+import type { HTMLAttributes } from "vue";
+import { cn } from "@/lib/utils";
 
 const props = defineProps<{
-  checked?: boolean | 'indeterminate'
-  class?: HTMLAttributes['class']
-  disabled?: boolean
-}>()
+	checked?: boolean | "indeterminate";
+	class?: HTMLAttributes["class"];
+	disabled?: boolean;
+}>();
 
 const emit = defineEmits<{
-  'update:checked': [checked: boolean]
-}>()
+	"update:checked": [checked: boolean];
+}>();
 
 function handleChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  emit('update:checked', target.checked)
+	const target = event.target as HTMLInputElement;
+	emit("update:checked", target.checked);
 }
 </script>
 

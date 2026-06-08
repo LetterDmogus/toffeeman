@@ -1,137 +1,210 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import CRUDTable from '@/components/CRUDTable.vue';
-import type { Column, FormField } from '@/components/CRUDTable.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Layers, Trash2, Loader2, ArrowLeft } from 'lucide-vue-next';
-import ops from '@/routes/ops';
+import { ArrowLeft, Layers, Loader2, Trash2 } from "lucide-vue-next";
+import { onMounted, ref } from "vue";
+import type { Column, FormField } from "@/components/CRUDTable.vue";
+import CRUDTable from "@/components/CRUDTable.vue";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import ops from "@/routes/ops";
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            { title: 'Dashboard', href: '/dashboard' },
-            { title: 'Operasional', href: '#' },
-            { title: 'Bahan Baku', href: ops.ingredients().url },
-        ],
-    },
+	layout: {
+		breadcrumbs: [
+			{ title: "Dashboard", href: "/dashboard" },
+			{ title: "Operasional", href: "#" },
+			{ title: "Bahan Baku", href: ops.ingredients().url },
+		],
+	},
 });
 
 const tableKey = ref(0);
 const refreshCategories = async () => {
-    const res = await fetch('/api/ingredient-categories?all=true', { headers: { Accept: 'application/json' } });
-    if (res.ok) {
-        const data = await res.json();
-        const field = fields.find(f => f.key === 'ingredient_category_id');
-        if (field) field.options = data.map((c: any) => ({ value: c.id, label: c.name }));
-    }
+	const res = await fetch("/api/ingredient-categories?all=true", {
+		headers: { Accept: "application/json" },
+	});
+
+	if (res.ok) {
+		const data = await res.json();
+		const field = fields.find((f) => f.key === "ingredient_category_id");
+
+		if (field) {
+			field.options = data.map((c: any) => ({ value: c.id, label: c.name }));
+		}
+	}
 };
 
 onMounted(refreshCategories);
 
 const columns: Column<any>[] = [
-    { key: 'name', label: 'Nama Bahan' },
-    { key: 'sku', label: 'SKU' },
-    { key: 'ingredient_category_id', label: 'Kategori', render: (val, row) => row.category?.name || '—' },
-    { key: 'qty', label: 'Total Stok', render: (val, row) => `${val} ${row.unit}` },
-    { key: 'small_unit_qty', label: 'Satuan Kecil', render: (val, row) => `${val} g/ml` },
-    { key: 'storage_temperature', label: 'Suhu Penyimpanan', render: (val) => val ? `${val}` : '—' },
-    { key: 'created_by', label: 'Dibuat Oleh', render: (val, row) => row.creator?.name || '—' },
-    { key: 'status', label: 'Status' },
+	{ key: "name", label: "Nama Bahan" },
+	{ key: "sku", label: "SKU" },
+	{
+		key: "ingredient_category_id",
+		label: "Kategori",
+		render: (val, row) => row.category?.name || "—",
+	},
+	{
+		key: "qty",
+		label: "Total Stok",
+		render: (val, row) => `${val} ${row.unit}`,
+	},
+	{
+		key: "small_unit_qty",
+		label: "Satuan Kecil",
+		render: (val, row) => `${val} g/ml`,
+	},
+	{
+		key: "storage_temperature",
+		label: "Suhu Penyimpanan",
+		render: (val) => (val ? `${val}` : "—"),
+	},
+	{
+		key: "created_by",
+		label: "Dibuat Oleh",
+		render: (val, row) => row.creator?.name || "—",
+	},
+	{ key: "status", label: "Status" },
 ];
 
 const fields: FormField[] = [
-    { key: 'name', label: 'Nama Bahan', type: 'text', required: true },
-    { key: 'sku', label: 'SKU', type: 'text' },
-    { key: 'ingredient_category_id', label: 'Kategori', type: 'select', required: true, options: [] },
-    { key: 'price', label: 'Harga Beli (Rp)', type: 'number', required: true },
-    { key: 'qty', label: 'Stok Awal', type: 'number', required: true },
-    { key: 'unit', label: 'Satuan Utama (misal: Kg, Box)', type: 'text', required: true },
-    { key: 'small_unit_qty', label: 'Jumlah Unit Kecil (gram/ml)', type: 'number', required: true },
-    { key: 'min_qty', label: 'Min Stok Utama', type: 'number', required: true },
-    { key: 'storage_temperature', label: 'Suhu Penyimpanan (°C / teks)', type: 'text' },
-    { key: 'description', label: 'Keterangan', type: 'textarea' },
+	{ key: "name", label: "Nama Bahan", type: "text", required: true },
+	{ key: "sku", label: "SKU", type: "text" },
+	{
+		key: "ingredient_category_id",
+		label: "Kategori",
+		type: "select",
+		required: true,
+		options: [],
+	},
+	{ key: "price", label: "Harga Beli (Rp)", type: "number", required: true },
+	{ key: "qty", label: "Stok Awal", type: "number", required: true },
+	{
+		key: "unit",
+		label: "Satuan Utama (misal: Kg, Box)",
+		type: "text",
+		required: true,
+	},
+	{
+		key: "small_unit_qty",
+		label: "Jumlah Unit Kecil (gram/ml)",
+		type: "number",
+		required: true,
+	},
+	{ key: "min_qty", label: "Min Stok Utama", type: "number", required: true },
+	{
+		key: "storage_temperature",
+		label: "Suhu Penyimpanan (°C / teks)",
+		type: "text",
+	},
+	{ key: "description", label: "Keterangan", type: "textarea" },
 ];
 
-const badgeMap = { in_stock: 'success', low_stock: 'warning', out_of_stock: 'danger' };
+const badgeMap = {
+	in_stock: "success",
+	low_stock: "warning",
+	out_of_stock: "danger",
+};
 
 // ─── View Switching State ────────────────────────────────────────────────────
-const viewMode = ref<'ingredients' | 'batches'>('ingredients');
+const viewMode = ref<"ingredients" | "batches">("ingredients");
 const selectedIngredient = ref<any>(null);
 const batches = ref<any[]>([]);
 const addingBatch = ref(false);
 const newBatch = ref({
-    batch_number: '',
-    qty: 0,
-    expiration_date: '',
+	batch_number: "",
+	qty: 0,
+	expiration_date: "",
 });
 
 const switchToBatches = async (ingredient: any) => {
-    selectedIngredient.value = ingredient;
-    newBatch.value = { batch_number: '', qty: 0, expiration_date: '' };
-    await fetchBatches();
-    viewMode.value = 'batches';
+	selectedIngredient.value = ingredient;
+	newBatch.value = { batch_number: "", qty: 0, expiration_date: "" };
+	await fetchBatches();
+	viewMode.value = "batches";
 };
 
 const goBack = () => {
-    viewMode.value = 'ingredients';
-    tableKey.value++; // Force main table reload to update stock quantities
+	viewMode.value = "ingredients";
+	tableKey.value++; // Force main table reload to update stock quantities
 };
 
 const fetchBatches = async () => {
-    if (!selectedIngredient.value) return;
-    const res = await fetch(`/api/ingredient-batches?ingredient_id=${selectedIngredient.value.id}`, {
-        headers: { Accept: 'application/json' },
-    });
-    if (res.ok) {
-        const json = await res.json();
-        batches.value = json.data || [];
-    }
+	if (!selectedIngredient.value) {
+		return;
+	}
+
+	const res = await fetch(
+		`/api/ingredient-batches?ingredient_id=${selectedIngredient.value.id}`,
+		{
+			headers: { Accept: "application/json" },
+		},
+	);
+
+	if (res.ok) {
+		const json = await res.json();
+		batches.value = json.data || [];
+	}
 };
 
 const addBatch = async () => {
-    if (!selectedIngredient.value) return;
-    addingBatch.value = true;
-    try {
-        const res = await fetch('/api/ingredient-batches', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-            },
-            body: JSON.stringify({
-                ingredient_id: selectedIngredient.value.id,
-                ...newBatch.value,
-            }),
-        });
-        if (res.ok) {
-            newBatch.value = { batch_number: '', qty: 0, expiration_date: '' };
-            await fetchBatches();
-        }
-    } finally {
-        addingBatch.value = false;
-    }
+	if (!selectedIngredient.value) {
+		return;
+	}
+
+	addingBatch.value = true;
+
+	try {
+		const res = await fetch("/api/ingredient-batches", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json",
+				"X-CSRF-TOKEN":
+					(document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)
+						?.content || "",
+			},
+			body: JSON.stringify({
+				ingredient_id: selectedIngredient.value.id,
+				...newBatch.value,
+			}),
+		});
+
+		if (res.ok) {
+			newBatch.value = { batch_number: "", qty: 0, expiration_date: "" };
+			await fetchBatches();
+		}
+	} finally {
+		addingBatch.value = false;
+	}
 };
 
 const deleteBatch = async (batchId: number) => {
-    if (!confirm('Apakah Anda yakin ingin menghapus batch ini?')) return;
-    const res = await fetch(`/api/ingredient-batches/${batchId}`, {
-        method: 'DELETE',
-        headers: {
-            Accept: 'application/json',
-            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
-        },
-    });
-    if (res.ok) {
-        await fetchBatches();
-    }
+	if (!confirm("Apakah Anda yakin ingin menghapus batch ini?")) {
+		return;
+	}
+
+	const res = await fetch(`/api/ingredient-batches/${batchId}`, {
+		method: "DELETE",
+		headers: {
+			Accept: "application/json",
+			"X-CSRF-TOKEN":
+				(document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)
+					?.content || "",
+		},
+	});
+
+	if (res.ok) {
+		await fetchBatches();
+	}
 };
 
 const formatDate = (val: string) => {
-    if (!val) return '—';
-    return new Date(val).toLocaleDateString('id-ID');
+	if (!val) {
+		return "—";
+	}
+
+	return new Date(val).toLocaleDateString("id-ID");
 };
 </script>
 

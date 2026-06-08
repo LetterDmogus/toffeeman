@@ -1,31 +1,31 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3';
-import { KeyRound } from 'lucide-vue-next';
-import { destroy } from '@/actions/Laravel/Passkeys/Http/Controllers/PasskeyRegistrationController';
-import Heading from '@/components/Heading.vue';
-import PasskeyItem from '@/components/PasskeyItem.vue';
-import PasskeyRegister from '@/components/PasskeyRegister.vue';
-import type { Passkey } from '@/types/auth';
+import { router } from "@inertiajs/vue3";
+import { KeyRound } from "lucide-vue-next";
+import { destroy } from "@/actions/Laravel/Passkeys/Http/Controllers/PasskeyRegistrationController";
+import Heading from "@/components/Heading.vue";
+import PasskeyItem from "@/components/PasskeyItem.vue";
+import PasskeyRegister from "@/components/PasskeyRegister.vue";
+import type { Passkey } from "@/types/auth";
 
 export type Props = {
-    canManagePasskeys?: boolean;
-    passkeys?: Passkey[];
+	canManagePasskeys?: boolean;
+	passkeys?: Passkey[];
 };
 
 withDefaults(defineProps<Props>(), {
-    canManagePasskeys: false,
-    passkeys: () => [],
+	canManagePasskeys: false,
+	passkeys: () => [],
 });
 
 const handleDelete = (id: number, onError: () => void) => {
-    router.delete(destroy.url(id), {
-        preserveScroll: true,
-        onError,
-    });
+	router.delete(destroy.url(id), {
+		preserveScroll: true,
+		onError,
+	});
 };
 
 const handleRegisterSuccess = () => {
-    router.reload();
+	router.reload();
 };
 </script>
 

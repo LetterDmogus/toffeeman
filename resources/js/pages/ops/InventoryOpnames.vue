@@ -1,40 +1,69 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { Plus, Trash, ArrowLeft, Loader2, Check, Eye } from 'lucide-vue-next';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import CRUDTable from '@/components/CRUDTable.vue';
-import type { Column } from '@/components/CRUDTable.vue';
-import ops from '@/routes/ops';
+import { ArrowLeft, Check, Eye, Loader2, Plus, Trash } from "lucide-vue-next";
+import { onMounted, ref } from "vue";
+import type { Column } from "@/components/CRUDTable.vue";
+import CRUDTable from "@/components/CRUDTable.vue";
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import ops from "@/routes/ops";
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            { title: 'Dashboard', href: '/dashboard' },
-            { title: 'Operasional', href: '#' },
-            { title: 'Barang / Peralatan', href: ops.inventory().url },
-            { title: 'Stok Opname', href: '#' },
-        ],
-    },
+	layout: {
+		breadcrumbs: [
+			{ title: "Dashboard", href: "/dashboard" },
+			{ title: "Operasional", href: "#" },
+			{ title: "Barang / Peralatan", href: ops.inventory().url },
+			{ title: "Stok Opname", href: "#" },
+		],
+	},
 });
 
 const inventoryItems = ref<any[]>([]);
 
 onMounted(async () => {
-    const res = await fetch('/api/inventory-items?all=true', { headers: { Accept: 'application/json' } });
-    if (res.ok) {
-        inventoryItems.value = await res.json();
-    }
+	const res = await fetch("/api/inventory-items?all=true", {
+		headers: { Accept: "application/json" },
+	});
+
+	if (res.ok) {
+		inventoryItems.value = await res.json();
+	}
 });
 
 const columns: Column<any>[] = [
-    { key: 'date', label: 'Tanggal', render: (val) => new Date(val as string).toLocaleDateString('id-ID') },
-    { key: 'opname_number', label: 'Nomor Opname', render: (val) => (val as string) || '—' },
-    { key: 'details_count', label: 'Jumlah Item', render: (val) => `${val} Item` },
-    { key: 'creator', label: 'Petugas Opname', render: (val, row) => row.creator?.name || '—' },
-    { key: 'notes', label: 'Catatan/Keterangan', render: (val) => (val as string) || '—' },
+	{
+		key: "date",
+		label: "Tanggal",
+		render: (val) => new Date(val as string).toLocaleDateString("id-ID"),
+	},
+	{
+		key: "opname_number",
+		label: "Nomor Opname",
+		render: (val) => (val as string) || "—",
+	},
+	{
+		key: "details_count",
+		label: "Jumlah Item",
+		render: (val) => `${val} Item`,
+	},
+	{
+		key: "creator",
+		label: "Petugas Opname",
+		render: (val, row) => row.creator?.name || "—",
+	},
+	{
+		key: "notes",
+		label: "Catatan/Keterangan",
+		render: (val) => (val as string) || "—",
+	},
 ];
 
 // Detail dialog state
@@ -42,92 +71,126 @@ const detailItem = ref<any>(null);
 const detailDialogOpen = ref(false);
 
 const viewDetails = async (row: any) => {
-    const res = await fetch(`/api/inventory-opnames/${row.id}`, { headers: { Accept: 'application/json' } });
-    if (res.ok) {
-        detailItem.value = await res.json();
-        detailDialogOpen.value = true;
-    }
+	const res = await fetch(`/api/inventory-opnames/${row.id}`, {
+		headers: { Accept: "application/json" },
+	});
+
+	if (res.ok) {
+		detailItem.value = await res.json();
+		detailDialogOpen.value = true;
+	}
 };
 
 // Form state for creating record
-const formDate = ref(new Date().toISOString().split('T')[0]);
-const formNotes = ref('');
+const formDate = ref(new Date().toISOString().split("T")[0]);
+const formNotes = ref("");
 const formDetails = ref<any[]>([
-    { inventory_item_id: '', qty_good_physical: 0, qty_fair_physical: 0, qty_damaged_physical: 0 }
+	{
+		inventory_item_id: "",
+		qty_good_physical: 0,
+		qty_fair_physical: 0,
+		qty_damaged_physical: 0,
+	},
 ]);
 const selectedFiles = ref<File[]>([]);
 const formErrors = ref<any>({});
 
 const addRow = () => {
-    formDetails.value.push({ inventory_item_id: '', qty_good_physical: 0, qty_fair_physical: 0, qty_damaged_physical: 0 });
+	formDetails.value.push({
+		inventory_item_id: "",
+		qty_good_physical: 0,
+		qty_fair_physical: 0,
+		qty_damaged_physical: 0,
+	});
 };
 
 const removeRow = (index: number) => {
-    if (formDetails.value.length > 1) {
-        formDetails.value.splice(index, 1);
-    }
+	if (formDetails.value.length > 1) {
+		formDetails.value.splice(index, 1);
+	}
 };
 
 const handleFileChange = (e: Event) => {
-    const files = (e.target as HTMLInputElement).files;
-    if (files) {
-        selectedFiles.value = Array.from(files);
-    }
+	const files = (e.target as HTMLInputElement).files;
+
+	if (files) {
+		selectedFiles.value = Array.from(files);
+	}
 };
 
 const resetForm = () => {
-    formDate.value = new Date().toISOString().split('T')[0];
-    formNotes.value = '';
-    formDetails.value = [{ inventory_item_id: '', qty_good_physical: 0, qty_fair_physical: 0, qty_damaged_physical: 0 }];
-    selectedFiles.value = [];
-    formErrors.value = {};
+	formDate.value = new Date().toISOString().split("T")[0];
+	formNotes.value = "";
+	formDetails.value = [
+		{
+			inventory_item_id: "",
+			qty_good_physical: 0,
+			qty_fair_physical: 0,
+			qty_damaged_physical: 0,
+		},
+	];
+	selectedFiles.value = [];
+	formErrors.value = {};
 };
 
 const submitCustomForm = async (cancel: () => void, refresh: () => void) => {
-    formErrors.value = {};
-    const formData = new FormData();
-    formData.append('date', formDate.value);
-    formData.append('notes', formNotes.value);
+	formErrors.value = {};
+	const formData = new FormData();
+	formData.append("date", formDate.value);
+	formData.append("notes", formNotes.value);
 
-    // Append details
-    formDetails.value.forEach((detail, index) => {
-        formData.append(`details[${index}][inventory_item_id]`, detail.inventory_item_id);
-        formData.append(`details[${index}][qty_good_physical]`, String(detail.qty_good_physical));
-        formData.append(`details[${index}][qty_fair_physical]`, String(detail.qty_fair_physical));
-        formData.append(`details[${index}][qty_damaged_physical]`, String(detail.qty_damaged_physical));
-    });
+	// Append details
+	formDetails.value.forEach((detail, index) => {
+		formData.append(
+			`details[${index}][inventory_item_id]`,
+			detail.inventory_item_id,
+		);
+		formData.append(
+			`details[${index}][qty_good_physical]`,
+			String(detail.qty_good_physical),
+		);
+		formData.append(
+			`details[${index}][qty_fair_physical]`,
+			String(detail.qty_fair_physical),
+		);
+		formData.append(
+			`details[${index}][qty_damaged_physical]`,
+			String(detail.qty_damaged_physical),
+		);
+	});
 
-    // Append photos
-    selectedFiles.value.forEach((file) => {
-        formData.append('photos[]', file);
-    });
+	// Append photos
+	selectedFiles.value.forEach((file) => {
+		formData.append("photos[]", file);
+	});
 
-    try {
-        const res = await fetch('/api/inventory-opnames', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-            }
-        });
+	try {
+		const res = await fetch("/api/inventory-opnames", {
+			method: "POST",
+			body: formData,
+			headers: {
+				Accept: "application/json",
+				"X-Requested-With": "XMLHttpRequest",
+			},
+		});
 
-        if (res.ok) {
-            resetForm();
-            refresh();
-            cancel();
-        } else {
-            const data = await res.json();
-            if (data.errors) {
-                formErrors.value = data.errors;
-            } else {
-                alert(data.message || 'Terjadi kesalahan saat menyimpan data.');
-            }
-        }
-    } catch (err) {
-        console.error(err);
-        alert('Terjadi kesalahan jaringan.');
-    }
+		if (res.ok) {
+			resetForm();
+			refresh();
+			cancel();
+		} else {
+			const data = await res.json();
+
+			if (data.errors) {
+				formErrors.value = data.errors;
+			} else {
+				alert(data.message || "Terjadi kesalahan saat menyimpan data.");
+			}
+		}
+	} catch (err) {
+		console.error(err);
+		alert("Terjadi kesalahan jaringan.");
+	}
 };
 </script>
 

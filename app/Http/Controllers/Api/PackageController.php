@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Package;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class PackageController extends BaseController
@@ -54,6 +55,10 @@ class PackageController extends BaseController
 
         $validated['slug'] = Str::slug($validated['name']);
 
+        if (isset($validated['image_url'])) {
+            $validated['image_url'] = $this->handleBase64Image($validated['image_url']);
+        }
+
         $package = Package::create($validated);
 
         return response()->json($package, 201);
@@ -84,6 +89,10 @@ class PackageController extends BaseController
 
         if (isset($validated['name'])) {
             $validated['slug'] = Str::slug($validated['name']);
+        }
+
+        if (isset($validated['image_url'])) {
+            $validated['image_url'] = $this->handleBase64Image($validated['image_url']);
         }
 
         $package->update($validated);
@@ -145,5 +154,36 @@ class PackageController extends BaseController
         $package->forceDelete();
 
         return response()->json(['message' => 'Package permanently deleted.']);
+    }
+
+    /**
+     * Decode and store base64 image data URI.
+     */
+    protected function handleBase64Image(?string $base64): ?string
+    {
+        if (! $base64) {
+            return null;
+        }
+
+        if (str_starts_with($base64, 'http://') || str_starts_with($base64, 'https://') || str_starts_with($base64, '/storage/')) {
+            return $base64;
+        }
+
+        if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
+            $ext = strtolower($type[1]);
+            $data = substr($base64, strpos($base64, ',') + 1);
+            $data = base64_decode($data);
+
+            if ($data === false) {
+                return null;
+            }
+
+            $filename = Str::random(40).'.'.$ext;
+            Storage::disk('public')->put('packages/'.$filename, $data);
+
+            return Storage::url('packages/'.$filename);
+        }
+
+        return $base64;
     }
 }

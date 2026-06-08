@@ -1,33 +1,33 @@
 <script setup lang="ts">
-import { KeyRound, Trash2 } from 'lucide-vue-next';
-import { ref } from 'vue';
-import { Button } from '@/components/ui/button';
+import { KeyRound, Trash2 } from "lucide-vue-next";
+import { ref } from "vue";
+import { Button } from "@/components/ui/button";
 import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
-import type { Passkey } from '@/types/auth';
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import type { Passkey } from "@/types/auth";
 
 const props = defineProps<{
-    passkey: Passkey;
+	passkey: Passkey;
 }>();
 
 const emit = defineEmits<{
-    remove: [id: number, onError: () => void];
+	remove: [id: number, onError: () => void];
 }>();
 
 const isDeleting = ref(false);
 
 const handleDelete = () => {
-    isDeleting.value = true;
-    emit('remove', props.passkey.id, () => {
-        isDeleting.value = false;
-    });
+	isDeleting.value = true;
+	emit("remove", props.passkey.id, () => {
+		isDeleting.value = false;
+	});
 };
 </script>
 

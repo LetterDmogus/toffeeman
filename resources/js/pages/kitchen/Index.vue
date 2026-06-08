@@ -1,193 +1,376 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { 
-    Clock, 
-    ChefHat, 
-    CheckCircle2, 
-    AlertCircle, 
-    Utensils,
-    MoveRight,
-    Loader2,
-    Check,
-    RotateCcw,
-    History,
-    ChevronLeft,
-    ChevronRight,
-    X,
-    LayoutDashboard,
-    ArrowLeft
-} from 'lucide-vue-next';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import {
+	AlertCircle,
+	ArrowLeft,
+	Check,
+	CheckCircle2,
+	ChefHat,
+	ChevronLeft,
+	ChevronRight,
+	Clock,
+	History,
+	LayoutDashboard,
+	Loader2,
+	MoveRight,
+	RotateCcw,
+	Utensils,
+	Volume2,
+	X,
+} from "lucide-vue-next";
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            { title: 'Dashboard', href: '/dashboard' },
-            { title: 'Dapur (KDS)', href: '#' },
-        ],
-    },
+	layout: {
+		breadcrumbs: [
+			{ title: "Dashboard", href: "/dashboard" },
+			{ title: "Dapur (KDS)", href: "#" },
+		],
+	},
 });
 
 const orders = ref<any[]>([]);
 const loading = ref(true);
 const refreshing = ref(false);
-const viewMode = ref<'active' | 'history'>('active');
+const viewMode = ref<"active" | "history">("active");
 const historyOrders = ref<any[]>([]);
 
 const fetchOrders = async (silent = false) => {
-    if (!silent) loading.value = true;
-    else refreshing.value = true;
-    
-    try {
-        const res = await fetch('/api/kitchen/orders', {
-            headers: { Accept: 'application/json' }
-        });
-        if (res.ok) {
-            orders.value = await res.json();
-        }
-    } catch (e) {
-        console.error('Gagal mengambil data pesanan:', e);
-    } finally {
-        loading.value = false;
-        refreshing.value = false;
-    }
+	if (!silent) {
+		loading.value = true;
+	} else {
+		refreshing.value = true;
+	}
+
+	try {
+		const res = await fetch("/api/kitchen/orders", {
+			headers: { Accept: "application/json" },
+		});
+
+		if (res.ok) {
+			orders.value = await res.json();
+		}
+	} catch (e) {
+		console.error("Gagal mengambil data pesanan:", e);
+	} finally {
+		loading.value = false;
+		refreshing.value = false;
+	}
 };
 
 const toggleHistory = async () => {
-    if (viewMode.value === 'active') {
-        loading.value = true;
-        try {
-            const res = await fetch('/api/orders?status=served&per_page=20', {
-                headers: { Accept: 'application/json' }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                historyOrders.value = data.data;
-                viewMode.value = 'history';
-            }
-        } catch (e) { console.error(e); }
-        finally { loading.value = false; }
-    } else {
-        viewMode.value = 'active';
-        fetchOrders();
-    }
+	if (viewMode.value === "active") {
+		loading.value = true;
+
+		try {
+			const res = await fetch("/api/orders?status=served&per_page=20", {
+				headers: { Accept: "application/json" },
+			});
+
+			if (res.ok) {
+				const data = await res.json();
+				historyOrders.value = data.data;
+				viewMode.value = "history";
+			}
+		} catch (e) {
+			console.error(e);
+		} finally {
+			loading.value = false;
+		}
+	} else {
+		viewMode.value = "active";
+		fetchOrders();
+	}
 };
 
 const updateStatus = async (orderId: number, status: string) => {
-    try {
-        const res = await fetch(`/api/kitchen/orders/${orderId}/status`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as any)?.content || ''
-            },
-            body: JSON.stringify({ status })
-        });
-        
-        if (res.ok) {
-            if (viewMode.value === 'history') {
-                await toggleHistory(); // Refresh history
-            } else {
-                await fetchOrders(true);
-            }
-        } else {
-            const data = await res.json();
-            alert(data.message || 'Gagal memperbarui status');
-        }
-    } catch (e) {
-        console.error('Terjadi kesalahan:', e);
-        alert('Kesalahan koneksi');
-    }
+	try {
+		const res = await fetch(`/api/kitchen/orders/${orderId}/status`, {
+			method: "PATCH",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json",
+				"X-CSRF-TOKEN":
+					(document.querySelector('meta[name="csrf-token"]') as any)?.content ||
+					"",
+			},
+			body: JSON.stringify({ status }),
+		});
+
+		if (res.ok) {
+			if (viewMode.value === "history") {
+				await toggleHistory(); // Refresh history
+			} else {
+				await fetchOrders(true);
+			}
+		} else {
+			const data = await res.json();
+			alert(data.message || "Gagal memperbarui status");
+		}
+	} catch (e) {
+		console.error("Terjadi kesalahan:", e);
+		alert("Kesalahan koneksi");
+	}
 };
 
 const toggleItemStatus = async (item: any) => {
-    const newStatus = item.status === 'done' ? 'cooking' : 'done';
-    await updateItemStatus(item, newStatus);
+	const newStatus = item.status === "done" ? "cooking" : "done";
+	await updateItemStatus(item, newStatus);
 };
 
 const updateItemStatus = async (item: any, status: string) => {
-    try {
-        const res = await fetch(`/api/kitchen/items/${item.id}/status`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as any)?.content || ''
-            },
-            body: JSON.stringify({ status })
-        });
-        
-        if (res.ok) {
-            item.status = status;
-        }
-    } catch (e) { console.error(e); }
+	try {
+		const res = await fetch(`/api/kitchen/items/${item.id}/status`, {
+			method: "PATCH",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json",
+				"X-CSRF-TOKEN":
+					(document.querySelector('meta[name="csrf-token"]') as any)?.content ||
+					"",
+			},
+			body: JSON.stringify({ status }),
+		});
+
+		if (res.ok) {
+			item.status = status;
+		}
+	} catch (e) {
+		console.error(e);
+	}
 };
 
 const isAllItemsDone = (order: any) => {
-    return order.items.every((item: any) => item.status === 'done' || item.status === 'cancelled');
+	return order.items.every(
+		(item: any) => item.status === "done" || item.status === "cancelled",
+	);
 };
 
 // ─── Summary Calculation (Grouped by Category) ───────────────────────────────
 const productSummary = computed(() => {
-    const summary: Record<string, { category: string, items: Record<string, number> }> = {};
-    
-    orders.value.forEach(order => {
-        if (order.status !== 'ready') {
-            order.items.forEach((item: any) => {
-                if (item.status !== 'done' && item.status !== 'cancelled') {
-                    const catName = item.menu_item?.category?.name || (item.package_id ? 'Paket' : 'Lainnya');
-                    
-                    if (!summary[catName]) {
-                        summary[catName] = { category: catName, items: {} };
-                    }
-                    
-                    if (!summary[catName].items[item.name]) {
-                        summary[catName].items[item.name] = 0;
-                    }
-                    summary[catName].items[item.name] += item.qty;
-                }
-            });
-        }
-    });
-    
-    return Object.values(summary).sort((a, b) => a.category.localeCompare(b.category));
+	const summary: Record<
+		string,
+		{ category: string; items: Record<string, number> }
+	> = {};
+
+	orders.value.forEach((order) => {
+		if (order.status !== "ready") {
+			order.items.forEach((item: any) => {
+				if (item.status !== "done" && item.status !== "cancelled") {
+					const catName =
+						item.menu_item?.category?.name ||
+						(item.package_id ? "Paket" : "Lainnya");
+
+					if (!summary[catName]) {
+						summary[catName] = { category: catName, items: {} };
+					}
+
+					if (!summary[catName].items[item.name]) {
+						summary[catName].items[item.name] = 0;
+					}
+
+					summary[catName].items[item.name] += item.qty;
+				}
+			});
+		}
+	});
+
+	return Object.values(summary).sort((a, b) =>
+		a.category.localeCompare(b.category),
+	);
 });
 
 // Polling for new orders every 15 seconds
 let pollInterval: any;
 onMounted(() => {
-    fetchOrders();
-    pollInterval = setInterval(() => {
-        if (viewMode.value === 'active') fetchOrders(true);
-    }, 15000);
+	fetchOrders();
+	pollInterval = setInterval(() => {
+		if (viewMode.value === "active") {
+			fetchOrders(true);
+		}
+	}, 15000);
 });
 
 onUnmounted(() => {
-    clearInterval(pollInterval);
+	clearInterval(pollInterval);
 });
 
 const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+	const date = new Date(dateString);
+
+	return date.toLocaleTimeString("id-ID", {
+		hour: "2-digit",
+		minute: "2-digit",
+	});
 };
 
 const getWaitTime = (dateString: string) => {
-    const start = new Date(dateString).getTime();
-    const now = new Date().getTime();
-    const diff = Math.floor((now - start) / 60000); // minutes
-    return diff;
+	const start = new Date(dateString).getTime();
+	const now = new Date().getTime();
+	const diff = Math.floor((now - start) / 60000); // minutes
+
+	return diff;
 };
 
 const getHeaderColor = (order: any) => {
-    const wait = getWaitTime(order.created_at);
-    if (order.status === 'preparing') return 'bg-brand-600 text-white';
-    if (order.status === 'ready') return 'bg-emerald-500 text-white';
-    if (wait > 20) return 'bg-red-600 text-white';
-    if (wait > 10) return 'bg-amber-500 text-white';
-    return 'bg-slate-800 text-white';
+	const wait = getWaitTime(order.created_at);
+
+	if (order.status === "preparing") {
+		return "bg-brand-600 text-white";
+	}
+
+	if (order.status === "ready") {
+		return "bg-emerald-500 text-white";
+	}
+
+	if (wait > 20) {
+		return "bg-red-600 text-white";
+	}
+
+	if (wait > 10) {
+		return "bg-amber-500 text-white";
+	}
+
+	return "bg-slate-800 text-white";
+};
+
+// ─── Text-to-Speech (TTS) Logic ──────────────────────────────────────────────
+const speakText = (text: string) => {
+	console.log("[TTS] Mencoba menyuarakan teks:", text);
+
+	if (!window.speechSynthesis) {
+		console.error(
+			"[TTS] Browser Anda tidak mendukung Web Speech API (speechSynthesis).",
+		);
+		return;
+	}
+
+	// Batalkan pembacaan sebelumnya agar tidak bertumpuk
+	window.speechSynthesis.cancel();
+	console.log("[TTS] Menghapus antrean suara sebelumnya.");
+
+	const utterance = new SpeechSynthesisUtterance(text);
+	utterance.lang = "id-ID";
+	utterance.rate = 1.0;
+	utterance.pitch = 1.0;
+
+	// Deteksi suara
+	const voices = window.speechSynthesis.getVoices();
+	console.log(
+		"[TTS] Daftar suara yang tersedia di browser:",
+		voices.map((v) => `${v.name} (${v.lang}) - Local: ${v.localService}`),
+	);
+
+	// Cari suara lokal bahasa Indonesia terlebih dahulu (lebih stabil di Linux)
+	let idVoice = voices.find(
+		(v) =>
+			v.lang.toLowerCase().replace("_", "-").includes("id") &&
+			v.localService === true,
+	);
+
+	// Jika tidak ada suara lokal, cari suara bahasa Indonesia apa saja (termasuk cloud/remote)
+	if (!idVoice) {
+		idVoice = voices.find((v) =>
+			v.lang.toLowerCase().replace("_", "-").includes("id"),
+		);
+	}
+
+	if (idVoice) {
+		console.log(
+			"[TTS] Menggunakan suara bahasa Indonesia:",
+			idVoice.name,
+			"(Local:",
+			idVoice.localService,
+			")",
+		);
+		utterance.voice = idVoice;
+	} else {
+		console.warn(
+			"[TTS] Suara bahasa Indonesia tidak terdeteksi, menggunakan default browser.",
+		);
+	}
+
+	utterance.onstart = () => {
+		console.log("[TTS Event] Pembacaan dimulai...");
+	};
+
+	utterance.onend = () => {
+		console.log("[TTS Event] Pembacaan selesai.");
+	};
+
+	utterance.onerror = (e) => {
+		console.error("[TTS Event Error] Terjadi kesalahan pembacaan:", e.error, e);
+
+		// Fallback: Jika gagal dengan suara spesifik atau bahasa id-ID, coba suara default OS tanpa set lang/voice khusus
+		if (e.error === "synthesis-failed") {
+			console.warn(
+				"[TTS Fallback] Gagal menyuarakan dengan suara pilihan. Mencoba memutar ulang menggunakan suara default bawaan sistem...",
+			);
+
+			const fallbackUtterance = new SpeechSynthesisUtterance(text);
+			fallbackUtterance.rate = 1.0;
+			fallbackUtterance.pitch = 1.0;
+
+			fallbackUtterance.onstart = () => {
+				console.log("[TTS Fallback Event] Pembacaan fallback dimulai...");
+			};
+			fallbackUtterance.onend = () => {
+				console.log("[TTS Fallback Event] Pembacaan fallback selesai.");
+			};
+			fallbackUtterance.onerror = (err) => {
+				console.error(
+					"[TTS Fallback Event Error] Pembacaan fallback juga gagal:",
+					err.error,
+				);
+			};
+
+			window.speechSynthesis.speak(fallbackUtterance);
+		}
+	};
+
+	window.speechSynthesis.speak(utterance);
+	console.log("[TTS] Perintah speak() berhasil dikirim.");
+};
+
+const speakItem = async (itemId: number) => {
+	console.log("[TTS Item] Mengambil teks dari backend untuk item ID:", itemId);
+	try {
+		const res = await fetch(`/api/kitchen/items/${itemId}/tts-text`, {
+			headers: { Accept: "application/json" },
+		});
+		if (res.ok) {
+			const data = await res.json();
+			console.log("[TTS Item] Teks diterima:", data.text);
+			speakText(data.text);
+		} else {
+			console.error("[TTS Item] Gagal fetch, status:", res.status);
+		}
+	} catch (e) {
+		console.error("[TTS Item] Error fetching:", e);
+	}
+};
+
+const speakOrder = async (orderId: number) => {
+	console.log(
+		"[TTS Order] Mengambil teks dari backend untuk order ID:",
+		orderId,
+	);
+	try {
+		const res = await fetch(`/api/kitchen/orders/${orderId}/tts-text`, {
+			headers: { Accept: "application/json" },
+		});
+		if (res.ok) {
+			const data = await res.json();
+			console.log("[TTS Order] Teks diterima:", data.text);
+			speakText(data.text);
+		} else {
+			console.error("[TTS Order] Gagal fetch, status:", res.status);
+		}
+	} catch (e) {
+		console.error("[TTS Order] Error fetching:", e);
+	}
 };
 </script>
 
@@ -271,6 +454,13 @@ const getHeaderColor = (order: any) => {
                                         <span class="text-[9px] font-black uppercase tracking-widest opacity-70">{{ order.order_type }}</span>
                                     </div>
                                     <div class="flex items-center gap-1.5 text-xs font-black">
+                                        <button 
+                                            @click.stop="speakOrder(order.id)" 
+                                            class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all mr-1"
+                                            title="Bacakan Pesanan"
+                                        >
+                                            <Volume2 class="h-3.5 w-3.5" />
+                                        </button>
                                         <Clock class="h-3 w-3" />
                                         {{ getWaitTime(order.created_at) }}'
                                     </div>
@@ -303,13 +493,23 @@ const getHeaderColor = (order: any) => {
                                                 <p class="text-sm font-black uppercase leading-tight" :class="item.status === 'done' ? 'line-through text-slate-300' : (item.status === 'cancelled' ? 'line-through text-red-300' : 'text-slate-800')">
                                                     {{ item.name }}
                                                 </p>
-                                                <button 
-                                                    v-if="item.status !== 'cancelled' && order.status !== 'ready'"
-                                                    @click.stop="updateItemStatus(item, 'cancelled')" 
-                                                    class="text-slate-300 hover:text-red-500 transition-colors p-1"
-                                                >
-                                                    <X class="h-3 w-3" />
-                                                </button>
+                                                <div class="flex items-center gap-1 shrink-0">
+                                                    <button 
+                                                        v-if="item.status !== 'cancelled'"
+                                                        @click.stop="speakItem(item.id)" 
+                                                        class="text-slate-400 hover:text-brand-600 transition-colors p-1"
+                                                        title="Bacakan Menu"
+                                                    >
+                                                        <Volume2 class="h-3.5 w-3.5" />
+                                                    </button>
+                                                    <button 
+                                                        v-if="item.status !== 'cancelled' && order.status !== 'ready'"
+                                                        @click.stop="updateItemStatus(item, 'cancelled')" 
+                                                        class="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                                    >
+                                                        <X class="h-3 w-3" />
+                                                    </button>
+                                                </div>
                                             </div>
                                             
                                             <!-- Customizations -->

@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\Package;
+use App\Models\Promo;
 use App\Models\Table;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -35,6 +36,16 @@ class KioskController extends Controller
             ->orderBy('name')
             ->get();
 
+        $promos = Promo::where('is_active', true)
+            ->where(function ($q) {
+                $q->whereNull('start_date')->orWhere('start_date', '<=', now());
+            })
+            ->where(function ($q) {
+                $q->whereNull('end_date')->orWhere('end_date', '>=', now());
+            })
+            ->with(['conditionMenuItem', 'rewardMenuItem'])
+            ->get();
+
         /** @var User|null $customer */
         $customer = auth()->user();
         $isCustomer = $customer && $customer->hasRole('customer');
@@ -45,6 +56,7 @@ class KioskController extends Controller
             'categories' => $categories,
             'menuItems' => $menuItems,
             'packages' => $packages,
+            'promos' => $promos,
             'customer' => $isCustomer ? $customer->only(['id', 'name', 'email', 'phone']) : null,
         ]);
     }

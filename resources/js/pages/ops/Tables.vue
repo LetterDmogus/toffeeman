@@ -1,84 +1,120 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import CRUDTable from '@/components/CRUDTable.vue';
-import type { Column, FormField } from '@/components/CRUDTable.vue';
-import ops from '@/routes/ops';
+import { ref } from "vue";
+import type { Column, FormField } from "@/components/CRUDTable.vue";
+import CRUDTable from "@/components/CRUDTable.vue";
+import ops from "@/routes/ops";
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            { title: 'Dashboard', href: '/dashboard' },
-            { title: 'Operasional', href: '#' },
-            { title: 'Meja', href: ops.tables().url },
-        ],
-    },
+	layout: {
+		breadcrumbs: [
+			{ title: "Dashboard", href: "/dashboard" },
+			{ title: "Operasional", href: "#" },
+			{ title: "Meja", href: ops.tables().url },
+		],
+	},
 });
 
 const columns: Column<any>[] = [
-    { key: 'number', label: 'No. Meja' },
-    { key: 'name', label: 'Nama Meja' },
-    { key: 'capacity', label: 'Kapasitas' },
-    { key: 'location', label: 'Lokasi' },
-    { key: 'status', label: 'Status' },
+	{ key: "number", label: "No. Meja" },
+	{ key: "name", label: "Nama Meja" },
+	{ key: "capacity", label: "Kapasitas" },
+	{ key: "location", label: "Lokasi" },
+	{ key: "status", label: "Status" },
 ];
 
 const fields: FormField[] = [
-    { key: 'number', label: 'Nomor Meja', type: 'text', required: true },
-    { key: 'name', label: 'Nama Meja', type: 'text' },
-    { key: 'capacity', label: 'Kapasitas', type: 'number', required: true },
-    { key: 'location', label: 'Lokasi', type: 'select', required: true, options: [{ value: 'indoor', label: 'Indoor' }, { value: 'outdoor', label: 'Outdoor' }, { value: 'private', label: 'Private Room' }] },
-    { key: 'status', label: 'Status', type: 'select', required: true, options: [{ value: 'available', label: 'Tersedia' }, { value: 'occupied', label: 'Terisi' }, { value: 'reserved', label: 'Dipesan' }] },
+	{ key: "number", label: "Nomor Meja", type: "text", required: true },
+	{ key: "name", label: "Nama Meja", type: "text" },
+	{ key: "capacity", label: "Kapasitas", type: "number", required: true },
+	{
+		key: "location",
+		label: "Lokasi",
+		type: "select",
+		required: true,
+		options: [
+			{ value: "indoor", label: "Indoor" },
+			{ value: "outdoor", label: "Outdoor" },
+			{ value: "private", label: "Private Room" },
+		],
+	},
+	{
+		key: "status",
+		label: "Status",
+		type: "select",
+		required: true,
+		options: [
+			{ value: "available", label: "Tersedia" },
+			{ value: "occupied", label: "Terisi" },
+			{ value: "reserved", label: "Dipesan" },
+		],
+	},
 ];
 
-const badgeMap = { available: 'success', occupied: 'danger', reserved: 'warning' };
+const badgeMap = {
+	available: "success",
+	occupied: "danger",
+	reserved: "warning",
+};
 
 // ── QR Modal ──────────────────────────────────────────────────────────────
-const qrModal = ref<{ open: boolean; table: any; imageUrl: string | null; generating: boolean }>({
-    open: false,
-    table: null,
-    imageUrl: null,
-    generating: false,
-})
+const qrModal = ref<{
+	open: boolean;
+	table: any;
+	imageUrl: string | null;
+	generating: boolean;
+}>({
+	open: false,
+	table: null,
+	imageUrl: null,
+	generating: false,
+});
 
 async function openQr(row: any) {
-    qrModal.value = { open: true, table: row, imageUrl: null, generating: false }
+	qrModal.value = { open: true, table: row, imageUrl: null, generating: false };
 
-    // If the table already has a QR image, show it; otherwise generate
-    if (row.qr_image_path) {
-        qrModal.value.imageUrl = `/storage/${row.qr_image_path}`
-    } else {
-        await generateQr(row)
-    }
+	// If the table already has a QR image, show it; otherwise generate
+	if (row.qr_image_path) {
+		qrModal.value.imageUrl = `/storage/${row.qr_image_path}`;
+	} else {
+		await generateQr(row);
+	}
 }
 
 async function generateQr(row: any) {
-    qrModal.value.generating = true
-    try {
-        const res = await fetch(`/api/tables/${row.id}/qr/generate`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
-                'Accept': 'application/json',
-            },
-        })
-        const data = await res.json()
-        qrModal.value.imageUrl = data.qr_image_url
-        qrModal.value.table = { ...qrModal.value.table, qr_image_path: data.qr_image_path }
-    } finally {
-        qrModal.value.generating = false
-    }
+	qrModal.value.generating = true;
+
+	try {
+		const res = await fetch(`/api/tables/${row.id}/qr/generate`, {
+			method: "POST",
+			headers: {
+				"X-CSRF-TOKEN":
+					document
+						.querySelector('meta[name="csrf-token"]')
+						?.getAttribute("content") ?? "",
+				Accept: "application/json",
+			},
+		});
+		const data = await res.json();
+		qrModal.value.imageUrl = data.qr_image_url;
+		qrModal.value.table = {
+			...qrModal.value.table,
+			qr_image_path: data.qr_image_path,
+		};
+	} finally {
+		qrModal.value.generating = false;
+	}
 }
 
 function downloadQr(row: any) {
-    window.open(`/api/tables/${row.id}/qr/download`, '_blank')
+	window.open(`/api/tables/${row.id}/qr/download`, "_blank");
 }
 
 function closeQr() {
-    qrModal.value.open = false
+	qrModal.value.open = false;
 }
 
 function openKiosk(row: any) {
-    window.open(`/kiosk/${row.qr_code}`, '_blank')
+	window.open(`/kiosk/${row.qr_code}`, "_blank");
 }
 </script>
 

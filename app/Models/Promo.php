@@ -3,8 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Promo extends Model
 {
@@ -14,19 +15,34 @@ class Promo extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'value' => 'decimal:2',
-        'min_order_amount' => 'decimal:2',
-        'start_date' => 'datetime',
-        'end_date' => 'datetime',
+        'condition_value' => 'decimal:2',
+        'reward_value' => 'decimal:2',
+        'schedule_days' => 'array',
+        'start_date' => 'date',
+        'end_date' => 'date',
     ];
 
-    public function buyMenuItem(): BelongsTo
+    /**
+     * The menu item that triggers the condition (for specific_item_qty).
+     */
+    public function conditionMenuItem(): BelongsTo
     {
-        return $this->belongsTo(MenuItem::class, 'buy_menu_item_id');
+        return $this->belongsTo(MenuItem::class, 'condition_menu_item_id');
     }
 
-    public function getMenuItem(): BelongsTo
+    /**
+     * The free menu item rewarded (for free_item reward).
+     */
+    public function rewardMenuItem(): BelongsTo
     {
-        return $this->belongsTo(MenuItem::class, 'get_menu_item_id');
+        return $this->belongsTo(MenuItem::class, 'reward_menu_item_id');
+    }
+
+    /**
+     * Specific menu items this promo's reward applies to (when reward_scope = 'specific').
+     */
+    public function menuItems(): BelongsToMany
+    {
+        return $this->belongsToMany(MenuItem::class, 'promo_items');
     }
 }

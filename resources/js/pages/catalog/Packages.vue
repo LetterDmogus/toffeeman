@@ -1,142 +1,211 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { Gift, ListPlus, ArrowLeft, Loader2, Check, Search, Trash2, X } from 'lucide-vue-next';
-import CRUDTable from '@/components/CRUDTable.vue';
-import type { Column, FormField } from '@/components/CRUDTable.vue';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import catalog from '@/routes/catalog';
+import {
+	ArrowLeft,
+	Check,
+	Gift,
+	ListPlus,
+	Loader2,
+	Search,
+	Trash2,
+	X,
+} from "lucide-vue-next";
+import { onMounted, ref } from "vue";
+import type { Column, FormField } from "@/components/CRUDTable.vue";
+import CRUDTable from "@/components/CRUDTable.vue";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import catalog from "@/routes/catalog";
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            { title: 'Dashboard', href: '/dashboard' },
-            { title: 'Katalog Produk', href: '#' },
-            { title: 'Paket Menu', href: catalog.packages().url },
-        ],
-    },
+	layout: {
+		breadcrumbs: [
+			{ title: "Dashboard", href: "/dashboard" },
+			{ title: "Katalog Produk", href: "#" },
+			{ title: "Paket Menu", href: catalog.packages().url },
+		],
+	},
 });
 
 const selectedPackage = ref<any | null>(null);
 const allMenuItems = ref<any[]>([]);
 const allInventoryItems = ref<any[]>([]);
-const packageItems = ref<{ menu_item_id: number | null; inventory_item_id: number | null; type: 'menu_item' | 'inventory_item'; name: string; qty: number; notes: string }[]>([]);
-const packageSearchQuery = ref('');
+const packageItems = ref<
+	{
+		menu_item_id: number | null;
+		inventory_item_id: number | null;
+		type: "menu_item" | "inventory_item";
+		name: string;
+		qty: number;
+		notes: string;
+	}[]
+>([]);
+const packageSearchQuery = ref("");
 const savingPackageItems = ref(false);
-const activeTab = ref<'menu' | 'inventory'>('menu');
+const activeTab = ref<"menu" | "inventory">("menu");
 
 const managePackageItems = async (pkg: any) => {
-    selectedPackage.value = pkg;
-    try {
-        const res = await fetch(`/api/packages/${pkg.id}`, { headers: { Accept: 'application/json' } });
-        if (res.ok) {
-            const data = await res.json();
-            packageItems.value = data.package_items?.map((item: any) => {
-                if (item.menu_item_id) {
-                    return {
-                        menu_item_id: item.menu_item_id,
-                        inventory_item_id: null,
-                        type: 'menu_item',
-                        name: item.menu_item?.name || '—',
-                        qty: item.qty,
-                        notes: item.notes || ''
-                    };
-                } else {
-                    return {
-                        menu_item_id: null,
-                        inventory_item_id: item.inventory_item_id,
-                        type: 'inventory_item',
-                        name: item.inventory_item?.name || '—',
-                        qty: item.qty,
-                        notes: item.notes || ''
-                    };
-                }
-            }) || [];
-        }
-        
-        // Fetch menus
-        const menuRes = await fetch('/api/menu-items?per_page=100', { headers: { Accept: 'application/json' } });
-        if (menuRes.ok) allMenuItems.value = (await menuRes.json()).data || [];
+	selectedPackage.value = pkg;
 
-        // Fetch inventory items (Barang)
-        const invRes = await fetch('/api/inventory-items?per_page=100', { headers: { Accept: 'application/json' } });
-        if (invRes.ok) allInventoryItems.value = (await invRes.json()).data || [];
-    } catch (e) { console.error(e); }
+	try {
+		const res = await fetch(`/api/packages/${pkg.id}`, {
+			headers: { Accept: "application/json" },
+		});
+
+		if (res.ok) {
+			const data = await res.json();
+			packageItems.value =
+				data.package_items?.map((item: any) => {
+					if (item.menu_item_id) {
+						return {
+							menu_item_id: item.menu_item_id,
+							inventory_item_id: null,
+							type: "menu_item",
+							name: item.menu_item?.name || "—",
+							qty: item.qty,
+							notes: item.notes || "",
+						};
+					} else {
+						return {
+							menu_item_id: null,
+							inventory_item_id: item.inventory_item_id,
+							type: "inventory_item",
+							name: item.inventory_item?.name || "—",
+							qty: item.qty,
+							notes: item.notes || "",
+						};
+					}
+				}) || [];
+		}
+
+		// Fetch menus
+		const menuRes = await fetch("/api/menu-items?per_page=100", {
+			headers: { Accept: "application/json" },
+		});
+
+		if (menuRes.ok) {
+			allMenuItems.value = (await menuRes.json()).data || [];
+		}
+
+		// Fetch inventory items (Barang)
+		const invRes = await fetch("/api/inventory-items?per_page=100", {
+			headers: { Accept: "application/json" },
+		});
+
+		if (invRes.ok) {
+			allInventoryItems.value = (await invRes.json()).data || [];
+		}
+	} catch (e) {
+		console.error(e);
+	}
 };
 
 const savePackageItems = async () => {
-    if (!selectedPackage.value) return;
-    savingPackageItems.value = true;
-    try {
-        const res = await fetch(`/api/packages/${selectedPackage.value.id}/items`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as any)?.content || '' },
-            body: JSON.stringify({
-                items: packageItems.value.map(i => ({
-                    menu_item_id: i.menu_item_id,
-                    inventory_item_id: i.inventory_item_id,
-                    qty: i.qty,
-                    notes: i.notes
-                }))
-            })
-        });
-        if (res.ok) selectedPackage.value = null;
-    } catch (e) { console.error(e); } finally { savingPackageItems.value = false; }
+	if (!selectedPackage.value) {
+		return;
+	}
+
+	savingPackageItems.value = true;
+
+	try {
+		const res = await fetch(`/api/packages/${selectedPackage.value.id}/items`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json",
+				"X-CSRF-TOKEN":
+					(document.querySelector('meta[name="csrf-token"]') as any)?.content ||
+					"",
+			},
+			body: JSON.stringify({
+				items: packageItems.value.map((i) => ({
+					menu_item_id: i.menu_item_id,
+					inventory_item_id: i.inventory_item_id,
+					qty: i.qty,
+					notes: i.notes,
+				})),
+			}),
+		});
+
+		if (res.ok) {
+			selectedPackage.value = null;
+		}
+	} catch (e) {
+		console.error(e);
+	} finally {
+		savingPackageItems.value = false;
+	}
 };
 
 const deletePackageItem = (item: any) => {
-    if (item.type === 'menu_item') {
-        packageItems.value = packageItems.value.filter(i => i.menu_item_id !== item.menu_item_id);
-    } else {
-        packageItems.value = packageItems.value.filter(i => i.inventory_item_id !== item.inventory_item_id);
-    }
+	if (item.type === "menu_item") {
+		packageItems.value = packageItems.value.filter(
+			(i) => i.menu_item_id !== item.menu_item_id,
+		);
+	} else {
+		packageItems.value = packageItems.value.filter(
+			(i) => i.inventory_item_id !== item.inventory_item_id,
+		);
+	}
 };
 
-const isItemAlreadySelected = (item: any, type: 'menu' | 'inventory') => {
-    if (type === 'menu') {
-        return packageItems.value.some(i => i.menu_item_id === item.id);
-    } else {
-        return packageItems.value.some(i => i.inventory_item_id === item.id);
-    }
+const isItemAlreadySelected = (item: any, type: "menu" | "inventory") => {
+	if (type === "menu") {
+		return packageItems.value.some((i) => i.menu_item_id === item.id);
+	} else {
+		return packageItems.value.some((i) => i.inventory_item_id === item.id);
+	}
 };
 
-const selectItem = (item: any, type: 'menu' | 'inventory') => {
-    if (type === 'menu') {
-        packageItems.value.push({
-            menu_item_id: item.id,
-            inventory_item_id: null,
-            type: 'menu_item',
-            name: item.name,
-            qty: 1,
-            notes: ''
-        });
-    } else {
-        packageItems.value.push({
-            menu_item_id: null,
-            inventory_item_id: item.id,
-            type: 'inventory_item',
-            name: item.name,
-            qty: 1,
-            notes: ''
-        });
-    }
+const selectItem = (item: any, type: "menu" | "inventory") => {
+	if (type === "menu") {
+		packageItems.value.push({
+			menu_item_id: item.id,
+			inventory_item_id: null,
+			type: "menu_item",
+			name: item.name,
+			qty: 1,
+			notes: "",
+		});
+	} else {
+		packageItems.value.push({
+			menu_item_id: null,
+			inventory_item_id: item.id,
+			type: "inventory_item",
+			name: item.name,
+			qty: 1,
+			notes: "",
+		});
+	}
 };
 
 const columns: Column<any>[] = [
-    { key: 'name', label: 'Nama Paket' },
-    { key: 'price', label: 'Harga', render: (val) => `Rp ${Number(val).toLocaleString('id-ID')}` },
-    { key: 'status', label: 'Status' },
+	{ key: "name", label: "Nama Paket" },
+	{
+		key: "price",
+		label: "Harga",
+		render: (val) => `Rp ${Number(val).toLocaleString("id-ID")}`,
+	},
+	{ key: "status", label: "Status" },
 ];
 
 const fields: FormField[] = [
-    { key: 'name', label: 'Nama Paket', type: 'text', required: true },
-    { key: 'description', label: 'Deskripsi', type: 'textarea' },
-    { key: 'price', label: 'Harga (Rp)', type: 'number', required: true },
-    { key: 'status', label: 'Status', type: 'select', required: true, options: [{ value: 'active', label: 'Aktif' }, { value: 'inactive', label: 'Tidak Aktif' }] },
-    { key: 'image_url', label: 'Gambar Paket', type: 'image' },
+	{ key: "name", label: "Nama Paket", type: "text", required: true },
+	{ key: "description", label: "Deskripsi", type: "textarea" },
+	{ key: "price", label: "Harga (Rp)", type: "number", required: true },
+	{
+		key: "status",
+		label: "Status",
+		type: "select",
+		required: true,
+		options: [
+			{ value: "active", label: "Aktif" },
+			{ value: "inactive", label: "Tidak Aktif" },
+		],
+	},
+	{ key: "image_url", label: "Gambar Paket", type: "image" },
 ];
 
-const badgeMap = { active: 'success', inactive: 'warning' };
+const badgeMap = { active: "success", inactive: "warning" };
 </script>
 
 <template>

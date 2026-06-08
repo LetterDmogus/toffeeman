@@ -1,27 +1,33 @@
 <script setup lang="ts">
-import CRUDTable from '@/components/CRUDTable.vue';
-import type { Column, FormField } from '@/components/CRUDTable.vue';
-import catalog from '@/routes/catalog';
+import type { Column, FormField } from "@/components/CRUDTable.vue";
+import CRUDTable from "@/components/CRUDTable.vue";
+import catalog from "@/routes/catalog";
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            { title: 'Dashboard', href: '/dashboard' },
-            { title: 'Katalog Produk', href: '#' },
-            { title: 'Kategori Menu', href: catalog.categories().url },
-        ],
-    },
+	layout: {
+		breadcrumbs: [
+			{ title: "Dashboard", href: "/dashboard" },
+			{ title: "Katalog Produk", href: "#" },
+			{ title: "Kategori Menu", href: catalog.categories().url },
+		],
+	},
 });
 
 const columns: Column<any>[] = [
-    { key: 'name', label: 'Nama Kategori' },
-    { key: 'slug', label: 'Slug' },
-    { key: 'description', label: 'Deskripsi' },
+	{ key: "name", label: "Nama Kategori" },
+	{ key: "slug", label: "Slug" },
+	{ key: "description", label: "Deskripsi" },
 ];
 
 const fields: FormField[] = [
-    { key: 'name', label: 'Nama Kategori', type: 'text', placeholder: 'Contoh: Appetizer', required: true },
-    { key: 'description', label: 'Deskripsi', type: 'textarea' },
+	{
+		key: "name",
+		label: "Nama Kategori",
+		type: "text",
+		placeholder: "Contoh: Appetizer",
+		required: true,
+	},
+	{ key: "description", label: "Deskripsi", type: "textarea" },
 ];
 </script>
 

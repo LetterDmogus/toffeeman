@@ -19,14 +19,26 @@ use App\Http\Controllers\Api\MidtransWebhookController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PackageController;
 use App\Http\Controllers\Api\PositionController;
+use App\Http\Controllers\Api\PromoController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TableController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\KioskController;
+use App\Http\Controllers\ScannerController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 Route::inertia('/', 'Welcome')->name('home');
+
+// ── Barcode Scanner (public, no auth required for phone) ──────────────────
+Route::get('/scanner', function () {
+    return Inertia\Inertia::render('pos/Scanner', [
+        'session' => request('session'),
+    ]);
+})->name('scanner');
+
+Route::get('/api/scanner/poll/{session}', [ScannerController::class, 'poll'])->name('api.scanner.poll');
+Route::post('/api/scanner/submit', [ScannerController::class, 'submit'])->name('api.scanner.submit');
 
 Route::post('api/midtrans/webhook', [MidtransWebhookController::class, 'handle'])->name('midtrans.webhook');
 
@@ -58,6 +70,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::inertia('categories', 'catalog/Categories')->name('categories');
         Route::inertia('packages', 'catalog/Packages')->name('packages');
         Route::inertia('add-ons', 'catalog/AddOns')->name('add-ons');
+        Route::inertia('promos', 'catalog/Promos')->name('promos');
     });
 
     // Operasional & Stok
@@ -99,6 +112,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'positions' => PositionController::class,
             'users' => UserController::class,
             'add-ons' => AddOnController::class,
+            'promos' => PromoController::class,
             'orders' => OrderController::class,
         ];
 
@@ -124,6 +138,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('kitchen/orders', [KitchenController::class, 'index'])->name('kitchen.orders');
         Route::patch('kitchen/orders/{order}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.orders.status');
         Route::patch('kitchen/items/{item}/status', [KitchenController::class, 'updateItemStatus'])->name('kitchen.items.status');
+        Route::get('kitchen/orders/{order}/tts-text', [KitchenController::class, 'getOrderTtsText'])->name('kitchen.orders.tts-text');
+        Route::get('kitchen/items/{item}/tts-text', [KitchenController::class, 'getItemTtsText'])->name('kitchen.items.tts-text');
 
         // Order Extensions
         Route::post('orders/{order}/items', [OrderController::class, 'addItems'])->name('orders.items.add');

@@ -66,4 +66,115 @@ class KitchenController extends Controller
             'item' => $item,
         ]);
     }
+
+    /**
+     * Get TTS text for an individual item.
+     */
+    public function getItemTtsText(OrderItem $item)
+    {
+        $item->load(['order.table', 'order.customer']);
+        $order = $item->order;
+        $location = $order->table ? 'Meja '.$order->table->number : 'Bawa pulang';
+
+        $text = "{$location}. ";
+        $text .= "{$item->qty} {$item->name}. ";
+
+        if (! empty($item->variants)) {
+            $variants = [];
+            foreach ($item->variants as $v) {
+                $name = $v['name'] ?? $v['value_name'] ?? '';
+                if ($name) {
+                    $variants[] = $name;
+                }
+            }
+            if (! empty($variants)) {
+                $text .= 'Varian '.implode(', ', $variants).'. ';
+            }
+        }
+
+        if (! empty($item->add_ons)) {
+            $addOns = [];
+            foreach ($item->add_ons as $a) {
+                $name = $a['name'] ?? '';
+                if ($name) {
+                    $addOns[] = $name;
+                }
+            }
+            if (! empty($addOns)) {
+                $text .= 'Tambahan '.implode(', ', $addOns).'. ';
+            }
+        }
+
+        if ($item->notes) {
+            $text .= "Catatan: {$item->notes}.";
+        }
+
+        return response()->json(['text' => trim($text)]);
+    }
+
+    /**
+     * Get TTS text for the entire order.
+     */
+    public function getOrderTtsText(Order $order)
+    {
+        $order->load(['items', 'table', 'customer']);
+        $location = $order->table ? 'Meja '.$order->table->number : 'Bawa pulang';
+        $customer = $order->customer ? 'Atas nama '.$order->customer->name : 'Walk in';
+
+        $text = "Pesanan baru. {$location}. {$customer}. ";
+
+        if ($order->notes) {
+            $text .= "Catatan umum: {$order->notes}. ";
+        }
+
+        $text .= 'Menu yang dipesan: ';
+        $itemsText = [];
+        foreach ($order->items as $item) {
+            if ($item->status === 'cancelled') {
+                continue;
+            }
+            $itemText = "{$item->qty} {$item->name}";
+
+            $itemDetails = [];
+            if (! empty($item->variants)) {
+                $variants = [];
+                foreach ($item->variants as $v) {
+                    $name = $v['name'] ?? $v['value_name'] ?? '';
+                    if ($name) {
+                        $variants[] = $name;
+                    }
+                }
+                if (! empty($variants)) {
+                    $itemDetails[] = 'varian '.implode(', ', $variants);
+                }
+            }
+
+            if (! empty($item->add_ons)) {
+                $addOns = [];
+                foreach ($item->add_ons as $a) {
+                    $name = $a['name'] ?? '';
+                    if ($name) {
+                        $addOns[] = $name;
+                    }
+                }
+                if (! empty($addOns)) {
+                    $itemDetails[] = 'tambahan '.implode(', ', $addOns);
+                }
+            }
+
+            if ($item->notes) {
+                $itemDetails[] = 'catatan '.$item->notes;
+            }
+
+            if (! empty($itemDetails)) {
+                $itemText .= ' dengan '.implode(', ', $itemDetails);
+            }
+
+            $itemsText[] = $itemText;
+        }
+
+        $text .= implode('. ', $itemsText).'.';
+
+        return response()->json(['text' => trim($text)]);
+    }
 }

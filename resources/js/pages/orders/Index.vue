@@ -1,85 +1,92 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue';
-import { Head, Link } from '@inertiajs/vue3';
-import { 
-    Search, 
-    Receipt, 
-    Calendar, 
-    Printer, 
-    CreditCard, 
-    Check, 
-    Eye,
-    RefreshCw,
-    Clock,
-    Flame,
-    Utensils,
-    CheckCircle2,
-    XCircle,
-    ChevronLeft,
-    ChevronRight,
-    ChevronsLeft,
-    ChevronsRight,
-    SlidersHorizontal,
-    Loader2
-} from 'lucide-vue-next';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Head, Link } from "@inertiajs/vue3";
 import {
-    DropdownMenu,
-    DropdownMenuItem,
-    DropdownMenuContent,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+	Calendar,
+	Check,
+	CheckCircle2,
+	ChevronLeft,
+	ChevronRight,
+	ChevronsLeft,
+	ChevronsRight,
+	Clock,
+	CreditCard,
+	Eye,
+	Flame,
+	Loader2,
+	Printer,
+	Receipt,
+	RefreshCw,
+	Search,
+	SlidersHorizontal,
+	Utensils,
+	XCircle,
+} from "lucide-vue-next";
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 
 defineOptions({
-    layout: {
-        breadcrumbs: [
-            { title: 'Dashboard', href: '/dashboard' },
-            { title: 'Operasional', href: '#' },
-            { title: 'Daftar Pesanan', href: '/orders' },
-        ],
-    },
+	layout: {
+		breadcrumbs: [
+			{ title: "Dashboard", href: "/dashboard" },
+			{ title: "Operasional", href: "#" },
+			{ title: "Daftar Pesanan", href: "/orders" },
+		],
+	},
 });
 
 // State
 const orders = ref<any[]>([]);
 const loading = ref(false);
-const search = ref('');
-const statusFilter = ref('');
-const paymentFilter = ref('');
+const search = ref("");
+const statusFilter = ref("");
+const paymentFilter = ref("");
 const selectedOrder = ref<any | null>(null);
 const detailOpen = ref(false);
 const paymentOpen = ref(false);
 const paying = ref(false);
 const cancelLoading = ref(false);
-const selectedPaymentMethod = ref<'cash' | 'qris' | 'transfer'>('cash');
-const selectedBank = ref<string>('bca');
+const selectedPaymentMethod = ref<"cash" | "qris" | "transfer">("cash");
+const selectedBank = ref<string>("bca");
 const banksList = [
-    { id: 'bca', name: 'BCA VA' },
-    { id: 'bri', name: 'BRI VA' },
-    { id: 'bni', name: 'BNI VA' },
-    { id: 'permata', name: 'Permata VA' },
-    { id: 'cimb', name: 'CIMB VA' },
-    { id: 'mandiri', name: 'Mandiri Bill' },
-    { id: 'danamon', name: 'Danamon VA' },
-    { id: 'bsi', name: 'BSI VA' },
-    { id: 'seabank', name: 'SeaBank VA' },
-    { id: 'saqu', name: 'Saqu VA' },
+	{ id: "bca", name: "BCA VA" },
+	{ id: "bri", name: "BRI VA" },
+	{ id: "bni", name: "BNI VA" },
+	{ id: "permata", name: "Permata VA" },
+	{ id: "cimb", name: "CIMB VA" },
+	{ id: "mandiri", name: "Mandiri Bill" },
+	{ id: "danamon", name: "Danamon VA" },
+	{ id: "bsi", name: "BSI VA" },
+	{ id: "seabank", name: "SeaBank VA" },
+	{ id: "saqu", name: "Saqu VA" },
 ];
 const discountAmount = ref(0);
 
 // Midtrans QRIS State
 const qrModalOpen = ref(false);
-const qrUrl = ref('');
-const vaNumber = ref('');
-const vaBank = ref('');
-const requestedBank = ref('');
-const activeOrderNumber = ref('');
+const qrUrl = ref("");
+const vaNumber = ref("");
+const vaBank = ref("");
+const requestedBank = ref("");
+const activeOrderNumber = ref("");
 const activeOrderFinalAmount = ref(0);
 
 // Polling State for QRIS Payment status
@@ -88,297 +95,407 @@ const paymentSuccess = ref(false);
 let pollingInterval: any = null;
 
 const startPolling = (orderId: number) => {
-    stopPolling();
-    paymentSuccess.value = false;
-    pollingOrderId.value = orderId;
-    pollingInterval = setInterval(async () => {
-        if (!qrModalOpen.value) {
-            stopPolling();
-            return;
-        }
-        try {
-            const res = await fetch(`/api/orders/${orderId}`, {
-                headers: { Accept: 'application/json' }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.payment_status === 'paid') {
-                    stopPolling();
-                    paymentSuccess.value = true;
-                    setTimeout(() => {
-                        qrModalOpen.value = false;
-                        paymentSuccess.value = false;
-                        
-                        // Update current selected order and refresh orders
-                        if (selectedOrder.value && selectedOrder.value.id === data.id) {
-                            selectedOrder.value = data;
-                        }
-                        fetchOrders(pagination.value.current_page);
-                    }, 3000);
-                }
-            }
-        } catch (err) {
-            console.error('Error polling order status:', err);
-        }
-    }, 2000);
+	stopPolling();
+	paymentSuccess.value = false;
+	pollingOrderId.value = orderId;
+	pollingInterval = setInterval(async () => {
+		if (!qrModalOpen.value) {
+			stopPolling();
+
+			return;
+		}
+
+		try {
+			const res = await fetch(`/api/orders/${orderId}`, {
+				headers: { Accept: "application/json" },
+			});
+
+			if (res.ok) {
+				const data = await res.json();
+
+				if (data.payment_status === "paid") {
+					stopPolling();
+					paymentSuccess.value = true;
+					setTimeout(() => {
+						qrModalOpen.value = false;
+						paymentSuccess.value = false;
+
+						// Update current selected order and refresh orders
+						if (selectedOrder.value && selectedOrder.value.id === data.id) {
+							selectedOrder.value = data;
+						}
+
+						fetchOrders(pagination.value.current_page);
+					}, 3000);
+				}
+			}
+		} catch (err) {
+			console.error("Error polling order status:", err);
+		}
+	}, 2000);
 };
 
 const stopPolling = () => {
-    if (pollingInterval) {
-        clearInterval(pollingInterval);
-        pollingInterval = null;
-    }
-    pollingOrderId.value = null;
+	if (pollingInterval) {
+		clearInterval(pollingInterval);
+		pollingInterval = null;
+	}
+
+	pollingOrderId.value = null;
 };
 
 onUnmounted(() => {
-    stopPolling();
+	stopPolling();
 });
 
 // Pagination State
 const pagination = ref({
-    current_page: 1,
-    last_page: 1,
-    total: 0,
-    from: null as number | null,
-    to: null as number | null,
-    per_page: 15
+	current_page: 1,
+	last_page: 1,
+	total: 0,
+	from: null as number | null,
+	to: null as number | null,
+	per_page: 15,
 });
 
 // Column Visibility State
 const availableColumns = [
-    { key: 'order_number', label: 'No. Pesanan' },
-    { key: 'created_at', label: 'Waktu Buat' },
-    { key: 'order_type', label: 'Tipe / Lokasi' },
-    { key: 'items', label: 'Item Hidangan' },
-    { key: 'total_amount', label: 'Subtotal (Gross)' },
-    { key: 'discount_amount', label: 'Diskon' },
-    { key: 'tax_amount', label: 'Pajak' },
-    { key: 'final_amount', label: 'Total Net' },
-    { key: 'payment_method', label: 'Metode Bayar' },
-    { key: 'status', label: 'Status Hidangan' },
-    { key: 'payment_status', label: 'Status Bayar' },
+	{ key: "order_number", label: "No. Pesanan" },
+	{ key: "created_at", label: "Waktu Buat" },
+	{ key: "order_type", label: "Tipe / Lokasi" },
+	{ key: "items", label: "Item Hidangan" },
+	{ key: "total_amount", label: "Subtotal (Gross)" },
+	{ key: "discount_amount", label: "Diskon" },
+	{ key: "tax_amount", label: "Pajak" },
+	{ key: "final_amount", label: "Total Net" },
+	{ key: "payment_method", label: "Metode Bayar" },
+	{ key: "status", label: "Status Hidangan" },
+	{ key: "payment_status", label: "Status Bayar" },
 ];
 
 const visibleColumns = ref<Record<string, boolean>>({
-    order_number: true,
-    created_at: true,
-    order_type: false,
-    items: true,
-    total_amount: false,
-    discount_amount: false,
-    tax_amount: false,
-    final_amount: false,
-    payment_method: false,
-    status: true,
-    payment_status: false,
+	order_number: true,
+	created_at: true,
+	order_type: false,
+	items: true,
+	total_amount: false,
+	discount_amount: false,
+	tax_amount: false,
+	final_amount: false,
+	payment_method: false,
+	status: true,
+	payment_status: false,
 });
 
 const activeColumnsCount = computed(() => {
-    return Object.values(visibleColumns.value).filter(Boolean).length + 1; // plus 1 for Aksi column
+	return Object.values(visibleColumns.value).filter(Boolean).length + 1; // plus 1 for Aksi column
 });
 
 // Status Badge Maps
 const statusBadgeMap = {
-    pending: { label: 'Menunggu', variant: 'outline', icon: Clock, color: 'text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30' },
-    processing: { label: 'Dimasak', variant: 'secondary', icon: Flame, color: 'text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30' },
-    ready: { label: 'Siap Saji', variant: 'default', icon: Utensils, color: 'text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30' },
-    served: { label: 'Selesai', variant: 'default', icon: CheckCircle2, color: 'text-brand-600 bg-brand-50 border-brand-200 dark:bg-brand-950/20 dark:text-brand-400 dark:border-brand-900/30' },
-    cancelled: { label: 'Batal', variant: 'destructive', icon: XCircle, color: 'text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30' },
+	pending: {
+		label: "Menunggu",
+		variant: "outline",
+		icon: Clock,
+		color:
+			"text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30",
+	},
+	processing: {
+		label: "Dimasak",
+		variant: "secondary",
+		icon: Flame,
+		color:
+			"text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/30",
+	},
+	ready: {
+		label: "Siap Saji",
+		variant: "default",
+		icon: Utensils,
+		color:
+			"text-emerald-600 bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/30",
+	},
+	served: {
+		label: "Selesai",
+		variant: "default",
+		icon: CheckCircle2,
+		color:
+			"text-brand-600 bg-brand-50 border-brand-200 dark:bg-brand-950/20 dark:text-brand-400 dark:border-brand-900/30",
+	},
+	cancelled: {
+		label: "Batal",
+		variant: "destructive",
+		icon: XCircle,
+		color:
+			"text-rose-600 bg-rose-50 border-rose-200 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/30",
+	},
 };
 
 const paymentBadgeMap = {
-    paid: { label: 'Lunas', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' },
-    unpaid: { label: 'Belum Bayar', color: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400' }
+	paid: {
+		label: "Lunas",
+		color:
+			"bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400",
+	},
+	unpaid: {
+		label: "Belum Bayar",
+		color:
+			"bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400",
+	},
 };
 
 // Formatter for variants array of objects
 const formatVariants = (variants: any[]) => {
-    if (!variants || !Array.isArray(variants) || variants.length === 0) return '';
-    return variants.map(v => {
-        if (typeof v === 'string') return v;
-        const optionName = v.option_name || '';
-        const valueName = v.name || v.value_name || v.value || '';
-        return optionName ? `${optionName}: ${valueName}` : valueName;
-    }).join(', ');
+	if (!variants || !Array.isArray(variants) || variants.length === 0) {
+		return "";
+	}
+
+	return variants
+		.map((v) => {
+			if (typeof v === "string") {
+				return v;
+			}
+
+			const optionName = v.option_name || "";
+			const valueName = v.name || v.value_name || v.value || "";
+
+			return optionName ? `${optionName}: ${valueName}` : valueName;
+		})
+		.join(", ");
 };
 
 // Fetch orders
 const fetchOrders = async (page = 1) => {
-    loading.value = true;
-    try {
-        let url = `/api/orders?page=${page}&per_page=15`;
-        if (statusFilter.value) url += `&status=${statusFilter.value}`;
-        if (paymentFilter.value) url += `&payment_status=${paymentFilter.value}`;
-        if (search.value) url += `&search=${search.value}`;
+	loading.value = true;
 
-        const res = await fetch(url, { headers: { Accept: 'application/json' } });
-        if (res.ok) {
-            const data = await res.json();
-            orders.value = data.data || [];
-            pagination.value = {
-                current_page: data.current_page || 1,
-                last_page: data.last_page || 1,
-                total: data.total || 0,
-                from: data.from || null,
-                to: data.to || null,
-                per_page: data.per_page || 15
-            };
-        }
-    } catch (err) {
-        console.error('Gagal mengambil data pesanan:', err);
-    } finally {
-        loading.value = false;
-    }
+	try {
+		let url = `/api/orders?page=${page}&per_page=15`;
+
+		if (statusFilter.value) {
+			url += `&status=${statusFilter.value}`;
+		}
+
+		if (paymentFilter.value) {
+			url += `&payment_status=${paymentFilter.value}`;
+		}
+
+		if (search.value) {
+			url += `&search=${search.value}`;
+		}
+
+		const res = await fetch(url, { headers: { Accept: "application/json" } });
+
+		if (res.ok) {
+			const data = await res.json();
+			orders.value = data.data || [];
+			pagination.value = {
+				current_page: data.current_page || 1,
+				last_page: data.last_page || 1,
+				total: data.total || 0,
+				from: data.from || null,
+				to: data.to || null,
+				per_page: data.per_page || 15,
+			};
+		}
+	} catch (err) {
+		console.error("Gagal mengambil data pesanan:", err);
+	} finally {
+		loading.value = false;
+	}
 };
 
 // Change page
 const changePage = (page: number) => {
-    if (page < 1 || page > pagination.value.last_page) return;
-    fetchOrders(page);
+	if (page < 1 || page > pagination.value.last_page) {
+		return;
+	}
+
+	fetchOrders(page);
 };
 
 // Filter handlers
 const handleFilter = () => {
-    fetchOrders(1);
+	fetchOrders(1);
 };
 
 const resetFilters = () => {
-    search.value = '';
-    statusFilter.value = '';
-    paymentFilter.value = '';
-    fetchOrders(1);
+	search.value = "";
+	statusFilter.value = "";
+	paymentFilter.value = "";
+	fetchOrders(1);
 };
 
 // Open order details
 const viewOrder = (order: any) => {
-    selectedOrder.value = order;
-    detailOpen.value = true;
+	selectedOrder.value = order;
+	detailOpen.value = true;
 };
 
 // Open payment modal
 const openPaymentModal = (order: any) => {
-    selectedOrder.value = order;
-    selectedPaymentMethod.value = 'cash';
-    discountAmount.value = order.discount_amount || 0;
-    paymentOpen.value = true;
+	selectedOrder.value = order;
+	selectedPaymentMethod.value = "cash";
+	discountAmount.value = order.discount_amount || 0;
+	paymentOpen.value = true;
 };
 
 // Format Rupiah
 const formatRupiah = (value: number) => {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    }).format(value);
+	return new Intl.NumberFormat("id-ID", {
+		style: "currency",
+		currency: "IDR",
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 0,
+	}).format(value);
 };
 
 // Format date
 const formatDate = (dateString: string) => {
-    if (!dateString) return '—';
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('id-ID', {
-        dateStyle: 'medium',
-        timeStyle: 'short'
-    }).format(date);
+	if (!dateString) {
+		return "—";
+	}
+
+	const date = new Date(dateString);
+
+	return new Intl.DateTimeFormat("id-ID", {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(date);
 };
 
 // Process order payment
 const submitPayment = async () => {
-    if (!selectedOrder.value) return;
-    paying.value = true;
-    try {
-        const res = await fetch(`/api/orders/${selectedOrder.value.id}/pay`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                Accept: 'application/json',
-                'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
-            },
-            body: JSON.stringify({
-                payment_method: selectedPaymentMethod.value,
-                discount: discountAmount.value,
-                bank: selectedPaymentMethod.value === 'transfer' ? selectedBank.value : null
-            })
-        });
+	if (!selectedOrder.value) {
+		return;
+	}
 
-        if (res.ok) {
-            const data = await res.json();
-            if (data.qr_url || data.va_number) {
-                qrUrl.value = data.qr_url || '';
-                vaNumber.value = data.va_number || '';
-                vaBank.value = data.va_bank || '';
-                requestedBank.value = data.requested_bank || data.order?.payment_metadata?.requested_bank || '';
-                activeOrderNumber.value = data.order?.order_number || data.order_number || selectedOrder.value?.order_number || '';
-                activeOrderFinalAmount.value = data.order?.final_amount || data.final_amount || selectedOrder.value?.final_amount || 0;
-                paymentOpen.value = false;
-                qrModalOpen.value = true;
-                startPolling(selectedOrder.value?.id || data.order?.id || data.id);
-            } else {
-                // Update in local list
-                const index = orders.value.findIndex(o => o.id === data.id);
-                if (index !== -1) {
-                    orders.value[index] = data;
-                }
-                selectedOrder.value = data;
-                paymentOpen.value = false;
-                fetchOrders(pagination.value.current_page);
-            }
-        } else {
-            const errData = await res.json();
-            alert(errData.message || 'Gagal memproses pembayaran.');
-        }
-    } catch (err) {
-        console.error('Error memproses pembayaran:', err);
-    } finally {
-        paying.value = false;
-    }
+	paying.value = true;
+
+	try {
+		const res = await fetch(`/api/orders/${selectedOrder.value.id}/pay`, {
+			method: "PATCH",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json",
+				"X-CSRF-TOKEN":
+					(document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)
+						?.content || "",
+			},
+			body: JSON.stringify({
+				payment_method: selectedPaymentMethod.value,
+				discount: discountAmount.value,
+				bank:
+					selectedPaymentMethod.value === "transfer"
+						? selectedBank.value
+						: null,
+			}),
+		});
+
+		if (res.ok) {
+			const data = await res.json();
+
+			if (data.qr_url || data.va_number) {
+				qrUrl.value = data.qr_url || "";
+				vaNumber.value = data.va_number || "";
+				vaBank.value = data.va_bank || "";
+				requestedBank.value =
+					data.requested_bank ||
+					data.order?.payment_metadata?.requested_bank ||
+					"";
+				activeOrderNumber.value =
+					data.order?.order_number ||
+					data.order_number ||
+					selectedOrder.value?.order_number ||
+					"";
+				activeOrderFinalAmount.value =
+					data.order?.final_amount ||
+					data.final_amount ||
+					selectedOrder.value?.final_amount ||
+					0;
+				paymentOpen.value = false;
+				qrModalOpen.value = true;
+				startPolling(selectedOrder.value?.id || data.order?.id || data.id);
+			} else {
+				// Update in local list
+				const index = orders.value.findIndex((o) => o.id === data.id);
+
+				if (index !== -1) {
+					orders.value[index] = data;
+				}
+
+				selectedOrder.value = data;
+				paymentOpen.value = false;
+				fetchOrders(pagination.value.current_page);
+			}
+		} else {
+			const errData = await res.json();
+			alert(errData.message || "Gagal memproses pembayaran.");
+		}
+	} catch (err) {
+		console.error("Error memproses pembayaran:", err);
+	} finally {
+		paying.value = false;
+	}
 };
 
 // Cancel whole order
 const cancelOrder = async () => {
-    if (!selectedOrder.value || !confirm('Apakah Anda yakin ingin membatalkan pesanan ini?')) return;
-    cancelLoading.value = true;
-    try {
-        const res = await fetch(`/api/orders/${selectedOrder.value.id}`, {
-            method: 'DELETE',
-            headers: {
-                Accept: 'application/json',
-                'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
-            }
-        });
+	if (
+		!selectedOrder.value ||
+		!confirm("Apakah Anda yakin ingin membatalkan pesanan ini?")
+	) {
+		return;
+	}
 
-        if (res.ok) {
-            fetchOrders(pagination.value.current_page);
-            detailOpen.value = false;
-        }
-    } catch (err) {
-        console.error('Error membatalkan pesanan:', err);
-    } finally {
-        cancelLoading.value = false;
-    }
+	cancelLoading.value = true;
+
+	try {
+		const res = await fetch(`/api/orders/${selectedOrder.value.id}`, {
+			method: "DELETE",
+			headers: {
+				Accept: "application/json",
+				"X-CSRF-TOKEN":
+					(document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)
+						?.content || "",
+			},
+		});
+
+		if (res.ok) {
+			fetchOrders(pagination.value.current_page);
+			detailOpen.value = false;
+		}
+	} catch (err) {
+		console.error("Error membatalkan pesanan:", err);
+	} finally {
+		cancelLoading.value = false;
+	}
 };
 
 // Print receipt utility
 const printReceipt = (order: any) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+	const printWindow = window.open("", "_blank");
 
-    const itemsHtml = order.items.map((item: any) => `
+	if (!printWindow) {
+		return;
+	}
+
+	const itemsHtml = order.items
+		.map(
+			(item: any) => `
         <tr style="border-bottom: 1px dashed #eee;">
             <td style="padding: 6px 0; font-size: 13px;">
                 <strong>${item.name}</strong>
-                ${item.variants?.length ? `<div style="font-size: 11px; color: #666;">Varian: ${formatVariants(item.variants)}</div>` : ''}
-                ${item.add_ons?.length ? `<div style="font-size: 11px; color: #666;">Topping: ${item.add_ons.map((a: any) => a.name).join(', ')}</div>` : ''}
-                ${item.notes ? `<div style="font-size: 11px; color: #f59e0b;">Catatan: ${item.notes}</div>` : ''}
+                ${item.variants?.length ? `<div style="font-size: 11px; color: #666;">Varian: ${formatVariants(item.variants)}</div>` : ""}
+                ${item.add_ons?.length ? `<div style="font-size: 11px; color: #666;">Topping: ${item.add_ons.map((a: any) => a.name).join(", ")}</div>` : ""}
+                ${item.notes ? `<div style="font-size: 11px; color: #f59e0b;">Catatan: ${item.notes}</div>` : ""}
             </td>
             <td style="padding: 6px 0; text-align: center; font-size: 13px;">x${item.qty}</td>
             <td style="padding: 6px 0; text-align: right; font-size: 13px;">${formatRupiah(item.price * item.qty)}</td>
         </tr>
-    `).join('');
+    `,
+		)
+		.join("");
 
-    printWindow.document.write(`
+	printWindow.document.write(`
         <html>
         <head>
             <title>Struk Belanja - ${order.order_number}</title>
@@ -398,8 +515,8 @@ const printReceipt = (order: any) => {
             <div class="hr"></div>
             <div class="flex-between"><span>No:</span> <span>${order.order_number}</span></div>
             <div class="flex-between"><span>Tanggal:</span> <span>${formatDate(order.created_at)}</span></div>
-            <div class="flex-between"><span>Meja:</span> <span>${order.table?.name || 'Take Away'}</span></div>
-            <div class="flex-between"><span>Tipe:</span> <span>${order.order_type === 'dine_in' ? 'Dine In' : 'Take Away'}</span></div>
+            <div class="flex-between"><span>Meja:</span> <span>${order.table?.name || "Take Away"}</span></div>
+            <div class="flex-between"><span>Tipe:</span> <span>${order.order_type === "dine_in" ? "Dine In" : "Take Away"}</span></div>
             <div class="hr"></div>
             <table>
                 <thead>
@@ -415,23 +532,23 @@ const printReceipt = (order: any) => {
             </table>
             <div class="hr"></div>
             <div class="flex-between"><span>Subtotal:</span> <span>${formatRupiah(order.total_amount)}</span></div>
-            ${order.discount_amount ? `<div class="flex-between"><span>Diskon:</span> <span>-${formatRupiah(order.discount_amount)}</span></div>` : ''}
+            ${order.discount_amount ? `<div class="flex-between"><span>Diskon:</span> <span>-${formatRupiah(order.discount_amount)}</span></div>` : ""}
             <div class="flex-between"><span>Pajak (10%):</span> <span>+${formatRupiah(order.tax_amount)}</span></div>
             <div class="flex-between bold" style="font-size: 15px;"><span>TOTAL:</span> <span>${formatRupiah(order.final_amount)}</span></div>
             <div class="hr"></div>
-            <div class="flex-between"><span>Metode:</span> <span>${order.payment_method?.toUpperCase() || 'CASH'}</span></div>
-            <div class="flex-between"><span>Status:</span> <span>${order.payment_status === 'paid' ? 'LUNAS' : 'BELUM BAYAR'}</span></div>
+            <div class="flex-between"><span>Metode:</span> <span>${order.payment_method?.toUpperCase() || "CASH"}</span></div>
+            <div class="flex-between"><span>Status:</span> <span>${order.payment_status === "paid" ? "LUNAS" : "BELUM BAYAR"}</span></div>
             <div class="hr"></div>
             <div class="center bold" style="margin-top: 20px;">Terima Kasih Atas Kunjungan Anda</div>
             <div class="center" style="font-size: 10px; color: #777; margin-top: 4px;">Powered by Laravel POS</div>
         </body>
         </html>
     `);
-    printWindow.document.close();
+	printWindow.document.close();
 };
 
 onMounted(() => {
-    fetchOrders(1);
+	fetchOrders(1);
 });
 </script>
 
