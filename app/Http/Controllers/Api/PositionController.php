@@ -45,6 +45,7 @@ class PositionController extends BaseController
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'starting_page' => ['nullable', 'string', 'max:255'],
         ]);
 
         $validated['slug'] = Str::slug($validated['name']);
@@ -76,6 +77,7 @@ class PositionController extends BaseController
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'starting_page' => ['nullable', 'string', 'max:255'],
         ]);
 
         if (isset($validated['name'])) {

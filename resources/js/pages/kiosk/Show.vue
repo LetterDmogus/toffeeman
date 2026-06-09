@@ -98,7 +98,7 @@ if (SpeechRecognition) {
 	};
 }
 
-function startSpeechToText(targetRef: { value: string }) {
+function startSpeechToText(updateCallback: (val: string) => void, currentValue: string) {
 	if (!recognition) {
 		alert(
 			"Fitur Voice-to-Text tidak didukung di peramban ini. Silakan gunakan Google Chrome.",
@@ -115,10 +115,10 @@ function startSpeechToText(targetRef: { value: string }) {
 
 	recognition.onresult = (event: any) => {
 		const transcript = event.results[0][0].transcript;
-		// Tambahkan transkrip suara ke input teks
-		targetRef.value = targetRef.value
-			? `${targetRef.value} ${transcript}`
+		const newValue = currentValue
+			? `${currentValue} ${transcript}`
 			: transcript;
+		updateCallback(newValue);
 	};
 
 	recognition.start();
@@ -1001,11 +1001,11 @@ function getStepIndex(status: string) {
                 >
                     Promo Spesial Untukmu
                 </h3>
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div class="flex gap-4 overflow-x-auto pb-2 scrollbar-none snap-x [&::-webkit-scrollbar]:hidden">
                     <div
                         v-for="promo in promos"
                         :key="promo.id"
-                        class="relative cursor-pointer overflow-hidden rounded-2xl border-2 border-border hover:border-primary/50 transition-all duration-300"
+                        class="flex-none w-80 md:w-96 snap-center relative cursor-pointer overflow-hidden rounded-2xl border-2 border-border hover:border-primary/50 transition-all duration-300"
                         @click="
                             activeDetailPromo = promo;
                             isPromoDetailOpen = true;
@@ -1832,7 +1832,7 @@ function getStepIndex(status: string) {
                                 />
                                 <button
                                     type="button"
-                                    @click="startSpeechToText(itemNotes)"
+                                    @click="startSpeechToText((val) => itemNotes = val, itemNotes)"
                                     class="absolute right-3 rounded-full p-2 transition-colors hover:bg-secondary"
                                     :class="
                                         isListening

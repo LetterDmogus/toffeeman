@@ -2,6 +2,7 @@
 import { Link } from "@inertiajs/vue3";
 import {
 	ArrowDownToLine,
+	ArrowRightLeft,
 	ArrowUpFromLine,
 	BarChart3,
 	Boxes,
@@ -47,14 +48,14 @@ import type { NavItem } from "@/types";
 
 const catalogNavItems: NavItem[] = [
 	{ title: "Menu & Varian", href: catalog.menu().url, icon: UtensilsCrossed },
+	{ title: "Almanak Resep", href: catalog.recipeBook().url, icon: ChefHat },
 	{ title: "Kategori Menu", href: catalog.categories().url, icon: Tags },
 	{ title: "Paket Menu", href: catalog.packages().url, icon: Gift },
 	{ title: "Extra Topping", href: catalog.addOns().url, icon: PlusCircle },
 	{ title: "Sistem Promo", href: catalog.promos().url, icon: TicketPercent },
 ];
 
-const opsNavItems: NavItem[] = [
-	{ title: "Meja", href: ops.tables().url, icon: Table2 },
+const opsIngredientsNavItems: NavItem[] = [
 	{ title: "Bahan Baku", href: ops.ingredients().url, icon: Carrot },
 	{
 		title: "Kategori Bahan",
@@ -62,6 +63,15 @@ const opsNavItems: NavItem[] = [
 		icon: FolderClosed,
 	},
 	{ title: "Batch Bahan", href: ops.ingredientBatches().url, icon: History },
+	{
+		title: "Mutasi Bahan",
+		href: ops.ingredientMutations().url,
+		icon: ArrowRightLeft,
+	},
+];
+
+const opsEquipmentNavItems: NavItem[] = [
+	{ title: "Meja", href: ops.tables().url, icon: Table2 },
 	{ title: "Barang / Peralatan", href: ops.inventory().url, icon: Boxes },
 	{
 		title: "Kategori Barang",
@@ -83,12 +93,18 @@ const opsNavItems: NavItem[] = [
 		href: ops.inventoryOpnames().url,
 		icon: ClipboardCheck,
 	},
+	{
+		title: "Mutasi Stok",
+		href: ops.inventoryMutations().url,
+		icon: ArrowRightLeft,
+	},
 ];
 
 const teamNavItems: NavItem[] = [
 	{ title: "Karyawan", href: team.employees().url, icon: Users },
 	{ title: "Jabatan", href: team.positions().url, icon: Contact },
 	{ title: "User / Pengguna", href: team.users().url, icon: ShieldCheck },
+	{ title: "Hak Akses Role", href: team.rolesPermissions().url, icon: ShieldCheck },
 ];
 
 const searchQuery = ref("");
@@ -121,12 +137,22 @@ const filteredCatalogItems = computed(() => {
 	);
 });
 
-const filteredOpsItems = computed(() => {
+const filteredOpsIngredientsItems = computed(() => {
 	if (!searchQuery.value) {
-		return opsNavItems;
+		return opsIngredientsNavItems;
 	}
 
-	return opsNavItems.filter((item) =>
+	return opsIngredientsNavItems.filter((item) =>
+		item.title.toLowerCase().includes(searchQuery.value.toLowerCase()),
+	);
+});
+
+const filteredOpsEquipmentItems = computed(() => {
+	if (!searchQuery.value) {
+		return opsEquipmentNavItems;
+	}
+
+	return opsEquipmentNavItems.filter((item) =>
 		item.title.toLowerCase().includes(searchQuery.value.toLowerCase()),
 	);
 });
@@ -194,9 +220,14 @@ const filteredTeamItems = computed(() => {
                 :items="filteredCatalogItems"
             />
             <NavMain
-                v-if="filteredOpsItems.length > 0"
-                label="Operasional & Stok"
-                :items="filteredOpsItems"
+                v-if="filteredOpsIngredientsItems.length > 0"
+                label="Stok Bahan Baku"
+                :items="filteredOpsIngredientsItems"
+            />
+            <NavMain
+                v-if="filteredOpsEquipmentItems.length > 0"
+                label="Meja & Peralatan"
+                :items="filteredOpsEquipmentItems"
             />
             <NavMain
                 v-if="filteredTeamItems.length > 0"

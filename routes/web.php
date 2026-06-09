@@ -6,9 +6,11 @@ use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\IngredientBatchController;
 use App\Http\Controllers\Api\IngredientCategoryController;
 use App\Http\Controllers\Api\IngredientController;
+use App\Http\Controllers\Api\IngredientMutationController;
 use App\Http\Controllers\Api\InventoryCategoryController;
 use App\Http\Controllers\Api\InventoryInController;
 use App\Http\Controllers\Api\InventoryItemController;
+use App\Http\Controllers\Api\InventoryMutationController;
 use App\Http\Controllers\Api\InventoryOpnameController;
 use App\Http\Controllers\Api\InventoryOutController;
 use App\Http\Controllers\Api\KioskAuthController;
@@ -21,6 +23,7 @@ use App\Http\Controllers\Api\PackageController;
 use App\Http\Controllers\Api\PositionController;
 use App\Http\Controllers\Api\PromoController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\TableController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\KioskController;
@@ -71,6 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::inertia('packages', 'catalog/Packages')->name('packages');
         Route::inertia('add-ons', 'catalog/AddOns')->name('add-ons');
         Route::inertia('promos', 'catalog/Promos')->name('promos');
+        Route::inertia('recipe-book', 'catalog/RecipeBook')->name('recipe-book');
     });
 
     // Operasional & Stok
@@ -81,9 +85,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::inertia('inventory-ins', 'ops/InventoryIns')->name('inventory-ins');
         Route::inertia('inventory-outs', 'ops/InventoryOuts')->name('inventory-outs');
         Route::inertia('inventory-opnames', 'ops/InventoryOpnames')->name('inventory-opnames');
+        Route::inertia('inventory-mutations', 'ops/InventoryMutations')->name('inventory-mutations');
         Route::inertia('ingredients', 'ops/Ingredients')->name('ingredients');
         Route::inertia('ingredient-categories', 'ops/IngredientCategories')->name('ingredient-categories');
         Route::inertia('ingredient-batches', 'ops/IngredientBatches')->name('ingredient-batches');
+        Route::inertia('ingredient-mutations', 'ops/IngredientMutations')->name('ingredient-mutations');
     });
 
     // Manajemen Tim
@@ -91,6 +97,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::inertia('employees', 'team/Employees')->name('employees');
         Route::inertia('positions', 'team/Positions')->name('positions');
         Route::inertia('users', 'team/Users')->name('users');
+        Route::inertia('roles-permissions', 'team/RolesPermissions')->name('roles-permissions');
     });
 
     // API routes for CRUD tables (JSON responses)
@@ -108,6 +115,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'ingredient-categories' => IngredientCategoryController::class,
             'ingredients' => IngredientController::class,
             'ingredient-batches' => IngredientBatchController::class,
+            'ingredient-mutations' => IngredientMutationController::class,
             'employees' => EmployeeController::class,
             'positions' => PositionController::class,
             'users' => UserController::class,
@@ -131,8 +139,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Special routes
         Route::get('users/roles', [UserController::class, 'roles'])->name('users.roles');
+        Route::get('roles', [RolePermissionController::class, 'index'])->name('roles.index');
+        Route::post('roles', [RolePermissionController::class, 'storeRole'])->name('roles.store');
+        Route::delete('roles/{role}', [RolePermissionController::class, 'destroyRole'])->name('roles.destroy');
+        Route::get('permissions', [RolePermissionController::class, 'permissions'])->name('permissions.index');
+        Route::post('roles/{role}/permissions', [RolePermissionController::class, 'syncPermissions'])->name('roles.permissions.sync');
+        Route::post('positions/{position}/permissions', [RolePermissionController::class, 'syncPositionPermissions'])->name('positions.permissions.sync');
         Route::post('packages/{package}/items', [PackageController::class, 'syncItems'])->name('packages.items.sync');
         Route::get('inventory-items/{inventory_item}/barcode', [InventoryItemController::class, 'barcode'])->name('inventory-items.barcode');
+        Route::post('inventory-mutations', [InventoryMutationController::class, 'store'])->name('inventory-mutations.store');
+        Route::get('inventory-mutations', [InventoryMutationController::class, 'index'])->name('inventory-mutations.index');
 
         // Kitchen API
         Route::get('kitchen/orders', [KitchenController::class, 'index'])->name('kitchen.orders');

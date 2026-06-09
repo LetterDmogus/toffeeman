@@ -17,7 +17,7 @@ class EmployeeController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Employee::with(['user', 'position']);
+        $query = Employee::with(['user.position']);
 
         if ($request->filled('search')) {
             $search = $request->string('search');
@@ -33,7 +33,9 @@ class EmployeeController extends BaseController
         }
 
         if ($request->filled('position_id')) {
-            $query->where('position_id', $request->string('position_id'));
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('position_id', $request->string('position_id'));
+            });
         }
 
         if ($request->boolean('trash')) {
@@ -51,10 +53,11 @@ class EmployeeController extends BaseController
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'user_id' => ['nullable', 'exists:users,id', 'unique:employees,user_id'],
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'string', 'email', 'max:255', $request->filled('user_id') ? 'unique:users,email,'.$request->user_id : 'unique:users,email'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'password' => ['required', 'string', 'min:8'],
+            'password' => [$request->filled('user_id') ? 'nullable' : 'required', 'string', 'min:8'],
             'salary' => ['required', 'numeric', 'min:0'],
             'position_id' => ['nullable', 'exists:positions,id'],
             'status' => ['required', 'string', 'in:active,inactive,suspended'],
@@ -62,26 +65,42 @@ class EmployeeController extends BaseController
         ]);
 
         return DB::transaction(function () use ($validated) {
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'phone' => $validated['phone'],
-                'password' => bcrypt($validated['password']),
-                'status' => 'active',
-            ]);
+            if (! empty($validated['user_id'])) {
+                $user = User::findOrFail($validated['user_id']);
+                $userData = [
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'],
+                ];
+                if (! empty($validated['password'])) {
+                    $userData['password'] = bcrypt($validated['password']);
+                }
+                if (array_key_exists('position_id', $validated)) {
+                    $userData['position_id'] = $validated['position_id'];
+                }
+                $user->update($userData);
+            } else {
+                $user = User::create([
+                    'name' => $validated['name'],
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'],
+                    'password' => bcrypt($validated['password']),
+                    'status' => 'active',
+                    'position_id' => $validated['position_id'] ?? null,
+                ]);
 
-            // Assign employee role
-            $user->assignRole('admin'); // Default employee role or based on logic
+                // Assign employee role
+                $user->assignRole('admin'); // Default employee role or based on logic
+            }
 
             $employee = Employee::create([
                 'user_id' => $user->id,
-                'position_id' => $validated['position_id'],
                 'salary' => $validated['salary'],
                 'status' => $validated['status'],
-                'hired_at' => $validated['hired_at'],
+                'hired_at' => $validated['hired_at'] ?? null,
             ]);
 
-            return response()->json($employee->load(['user', 'position']), 201);
+            return response()->json($employee->load(['user.position']), 201);
         });
     }
 
@@ -90,7 +109,7 @@ class EmployeeController extends BaseController
      */
     public function show(Employee $employee): JsonResponse
     {
-        return response()->json($employee->load(['user', 'position']));
+        return response()->json($employee->load(['user.position']));
     }
 
     /**
@@ -123,6 +142,9 @@ class EmployeeController extends BaseController
             if (isset($validated['password'])) {
                 $userData['password'] = bcrypt($validated['password']);
             }
+            if (isset($validated['position_id'])) {
+                $userData['position_id'] = $validated['position_id'];
+            }
 
             if (! empty($userData)) {
                 $employee->user->update($userData);
@@ -131,9 +153,6 @@ class EmployeeController extends BaseController
             $employeeData = [];
             if (isset($validated['salary'])) {
                 $employeeData['salary'] = $validated['salary'];
-            }
-            if (isset($validated['position_id'])) {
-                $employeeData['position_id'] = $validated['position_id'];
             }
             if (isset($validated['status'])) {
                 $employeeData['status'] = $validated['status'];
@@ -146,7 +165,7 @@ class EmployeeController extends BaseController
                 $employee->update($employeeData);
             }
 
-            return response()->json($employee->fresh(['user', 'position']));
+            return response()->json($employee->fresh(['user.position']));
         });
     }
 
@@ -168,7 +187,7 @@ class EmployeeController extends BaseController
         $employee = Employee::onlyTrashed()->findOrFail($id);
         $employee->restore();
 
-        return response()->json($employee->load(['user', 'position']));
+        return response()->json($employee->load(['user.position']));
     }
 
     /**

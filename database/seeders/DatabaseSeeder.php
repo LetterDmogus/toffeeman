@@ -36,6 +36,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Admin Restaurant',
                 'password' => bcrypt('password'),
+                'position_id' => null,
             ]
         );
         $admin->assignRole('superadmin');
@@ -230,6 +231,8 @@ class DatabaseSeeder extends Seeder
                 'ingredient_category_id' => $ingCatMap['Bahan Kering'],
                 'qty' => 0.00, // calculated from batches
                 'unit' => 'kg',
+                'small_unit' => 'gram',
+                'conversion_factor' => 1000.00,
                 'min_qty' => 10.00,
                 'price' => 12500.00,
                 'storage_temperature' => 'Suhu Ruang (25°C)',
@@ -244,6 +247,8 @@ class DatabaseSeeder extends Seeder
                 'ingredient_category_id' => $ingCatMap['Produk Susu & Telur'],
                 'qty' => 0.00, // calculated from batches
                 'unit' => 'kg',
+                'small_unit' => 'gram',
+                'conversion_factor' => 1000.00,
                 'min_qty' => 5.00,
                 'price' => 140000.00,
                 'storage_temperature' => 'Dingin (4°C)',
@@ -258,6 +263,8 @@ class DatabaseSeeder extends Seeder
                 'ingredient_category_id' => $ingCatMap['Buah & Sayuran'],
                 'qty' => 0.00, // calculated from batches
                 'unit' => 'kg',
+                'small_unit' => 'gram',
+                'conversion_factor' => 1000.00,
                 'min_qty' => 3.00,
                 'price' => 45000.00,
                 'storage_temperature' => 'Dingin (4°C)',
@@ -272,6 +279,8 @@ class DatabaseSeeder extends Seeder
                 'ingredient_category_id' => $ingCatMap['Teh & Kopi'],
                 'qty' => 0.00, // calculated from batches
                 'unit' => 'pack',
+                'small_unit' => 'pcs',
+                'conversion_factor' => 1.00,
                 'min_qty' => 2.00,
                 'price' => 110000.00,
                 'storage_temperature' => 'Kering & Sejuk',
@@ -286,6 +295,8 @@ class DatabaseSeeder extends Seeder
                 'ingredient_category_id' => $ingCatMap['Bahan Kering'],
                 'qty' => 0.00, // calculated from batches
                 'unit' => 'kg',
+                'small_unit' => 'gram',
+                'conversion_factor' => 1000.00,
                 'min_qty' => 5.00,
                 'price' => 16000.00,
                 'storage_temperature' => 'Suhu Ruang',
@@ -336,6 +347,12 @@ class DatabaseSeeder extends Seeder
             'expiration_date' => '2027-06-01',
             'created_by' => $admin->id,
         ]);
+
+        // Recalculate quantities after seeding batches (since WithoutModelEvents is used)
+        $ingredients = Ingredient::all();
+        foreach ($ingredients as $ing) {
+            $ing->recalculateQty();
+        }
 
         // Seed Inventory Categories (Barang / Peralatan)
         $invCategories = [
@@ -450,21 +467,21 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($employees as $empData) {
+            $position = Position::where('slug', $empData['position_slug'])->first();
+
             $user = User::create([
                 'name' => $empData['name'],
                 'email' => $empData['email'],
                 'phone' => $empData['phone'],
                 'password' => $empData['password'],
                 'status' => $empData['status'],
+                'position_id' => $position ? $position->id : null,
             ]);
 
             $user->assignRole($empData['role']);
 
-            $position = Position::where('slug', $empData['position_slug'])->first();
-
             Employee::create([
                 'user_id' => $user->id,
-                'position_id' => $position ? $position->id : null,
                 'salary' => $empData['salary'],
                 'status' => $empData['status'],
                 'hired_at' => now(),

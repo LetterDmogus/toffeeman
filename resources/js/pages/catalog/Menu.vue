@@ -2,6 +2,7 @@
 import {
 	ArrowLeft,
 	Check,
+	ChefHat,
 	ListPlus,
 	Loader2,
 	Plus,
@@ -86,6 +87,7 @@ const refreshInventoryItems = async () => {
 onMounted(() => {
 	refreshCategories();
 	refreshInventoryItems();
+	fetchAllIngredients();
 });
 
 // ─── Menu Customizations (Variants & Add-ons) Logic ──────────────────
@@ -176,6 +178,103 @@ const saveMenuCustomizations = async () => {
 		console.error(e);
 	} finally {
 		savingCustomizations.value = false;
+	}
+};
+
+// ─── Menu Recipe Logic ────────────────────────────────────────────────
+const activePanel = ref<'customizations' | 'recipe'>('customizations');
+const allIngredients = ref<any[]>([]);
+const recipeItemsList = ref<{ ingredient_id: number | ''; qty: number }[]>([]);
+const savingRecipe = ref(false);
+
+const fetchAllIngredients = async () => {
+	try {
+		const res = await fetch("/api/ingredients?all=true", {
+			headers: { Accept: "application/json" },
+		});
+		if (res.ok) {
+			allIngredients.value = await res.json();
+		}
+	} catch (e) {
+		console.error(e);
+	}
+};
+
+const manageMenuRecipe = async (item: any) => {
+	selectedMenuItem.value = item;
+	activePanel.value = "recipe";
+	recipeItemsList.value = [];
+
+	try {
+		const menuRes = await fetch(`/api/menu-items/${item.id}`, {
+			headers: { Accept: "application/json" },
+		});
+
+		if (menuRes.ok) {
+			const data = await menuRes.json();
+			recipeItemsList.value = (data.recipe_items || []).map((ri: any) => ({
+				ingredient_id: ri.ingredient_id,
+				qty: Number(ri.qty),
+			}));
+		}
+	} catch (e) {
+		console.error(e);
+	}
+};
+
+const addRecipeRow = () => {
+	recipeItemsList.value.push({
+		ingredient_id: "",
+		qty: 1,
+	});
+};
+
+const removeRecipeRow = (index: number) => {
+	recipeItemsList.value.splice(index, 1);
+};
+
+const getSmallUnit = (ingredientId: number | '') => {
+	if (ingredientId === '') return 'unit';
+	const ing = allIngredients.value.find((i) => i.id === ingredientId);
+	return ing ? ing.small_unit : 'unit';
+};
+
+const saveMenuRecipe = async () => {
+	if (!selectedMenuItem.value) {
+		return;
+	}
+
+	savingRecipe.value = true;
+
+	try {
+		const recipePayload = recipeItemsList.value
+			.filter((ri) => ri.ingredient_id !== "" && ri.qty > 0)
+			.map((ri) => ({
+				ingredient_id: Number(ri.ingredient_id),
+				qty: Number(ri.qty),
+			}));
+
+		const res = await fetch(`/api/menu-items/${selectedMenuItem.value.id}`, {
+			method: "PATCH",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json",
+				"X-CSRF-TOKEN":
+					(document.querySelector('meta[name="csrf-token"]') as any)?.content ||
+					"",
+			},
+			body: JSON.stringify({
+				recipe: recipePayload,
+			}),
+		});
+
+		if (res.ok) {
+			selectedMenuItem.value = null;
+		}
+	} catch (e) {
+		console.error(e);
+	} finally {
+		savingRecipe.value = false;
 	}
 };
 
@@ -272,15 +371,30 @@ const menuItemBadge = {
                 :badge-map="menuItemBadge"
             >
                 <template #actions="{ row }">
-                    <Button
-                        size="icon-sm"
-                        variant="ghost"
-                        class="text-brand-600 hover:bg-brand-50 hover:text-brand-700"
-                        @click="manageMenuCustomizations(row)"
-                        title="Kelola Varian & Topping"
-                    >
-                        <ListPlus class="h-4.5 w-4.5" />
-                    </Button>
+                    <div class="flex items-center gap-1">
+                        <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            class="text-brand-600 hover:bg-brand-50 hover:text-brand-700"
+                            @click="
+                                selectedMenuItem = row;
+                                activePanel = 'customizations';
+                                manageMenuCustomizations(row);
+                            "
+                            title="Kelola Varian & Topping"
+                        >
+                            <ListPlus class="h-4.5 w-4.5" />
+                        </Button>
+                        <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            class="text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                            @click="manageMenuRecipe(row)"
+                            title="Kelola Resep Bahan Baku"
+                        >
+                            <ChefHat class="h-4.5 w-4.5" />
+                        </Button>
+                    </div>
                 </template>
             </CRUDTable>
         </div>
@@ -298,14 +412,26 @@ const menuItemBadge = {
                 /></Button>
                 <div>
                     <h2 class="text-lg font-bold text-foreground">
-                        Kustomisasi Menu: {{ selectedMenuItem.name }}
+                        <span v-if="activePanel === 'customizations'">
+                            Kustomisasi Menu: {{ selectedMenuItem.name }}
+                        </span>
+                        <span v-else>
+                            Resep Bahan Baku: {{ selectedMenuItem.name }}
+                        </span>
                     </h2>
                     <p class="text-xs text-muted-foreground">
-                        Kelola extra topping dan varian.
+                        <span v-if="activePanel === 'customizations'">
+                            Kelola extra topping dan varian.
+                        </span>
+                        <span v-else>
+                            Kelola resep bahan baku untuk menu ini (pengurangan stok otomatis saat terjual).
+                        </span>
                     </p>
                 </div>
             </div>
-            <div class="grid gap-8 lg:grid-cols-2">
+
+            <!-- Customizations Panel -->
+            <div v-if="activePanel === 'customizations'" class="grid gap-8 lg:grid-cols-2 animate-in duration-200 fade-in">
                 <div class="flex flex-col gap-4">
                     <div class="flex items-center justify-between">
                         <h3
@@ -484,22 +610,124 @@ const menuItemBadge = {
                         </div>
                     </div>
                 </div>
+                <div class="mt-8 flex items-center justify-end gap-3 border-t pt-4 sm:col-span-2">
+                    <Button variant="outline" @click="selectedMenuItem = null"
+                        >Batal</Button
+                    >
+                    <Button
+                        class="flex items-center gap-1.5 bg-brand-600 font-semibold text-white hover:bg-brand-700"
+                        :disabled="savingCustomizations"
+                        @click="saveMenuCustomizations"
+                    >
+                        <Loader2
+                            v-if="savingCustomizations"
+                            class="h-4 w-4 animate-spin"
+                        />
+                        <Check v-else class="h-4 w-4" />Simpan Kustomisasi
+                    </Button>
+                </div>
             </div>
-            <div class="mt-8 flex items-center justify-end gap-3 border-t pt-4">
-                <Button variant="outline" @click="selectedMenuItem = null"
-                    >Batal</Button
-                >
-                <Button
-                    class="flex items-center gap-1.5 bg-brand-600 font-semibold text-white hover:bg-brand-700"
-                    :disabled="savingCustomizations"
-                    @click="saveMenuCustomizations"
-                >
-                    <Loader2
-                        v-if="savingCustomizations"
-                        class="h-4 w-4 animate-spin"
-                    />
-                    <Check v-else class="h-4 w-4" />Simpan Kustomisasi
-                </Button>
+
+            <!-- Recipe Panel -->
+            <div v-else-if="activePanel === 'recipe'" class="space-y-6 animate-in duration-200 fade-in">
+                <div class="flex items-center justify-between border-b pb-4">
+                    <h3 class="flex items-center gap-2 text-sm font-semibold text-foreground/80">
+                        <ChefHat class="h-4.5 w-4.5 text-amber-500" />
+                        Bahan Baku Terdaftar
+                    </h3>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        class="h-8 gap-1.5 text-xs"
+                        @click="addRecipeRow"
+                    >
+                        <Plus class="h-3.5 w-3.5" />
+                        Tambah Bahan Baku
+                    </Button>
+                </div>
+
+                <div class="space-y-4">
+                    <div v-if="recipeItemsList.length === 0" class="flex flex-col items-center justify-center py-12 text-center rounded-xl border-2 border-dashed border-muted/50 bg-background/30">
+                        <ChefHat class="h-10 w-10 text-muted-foreground/40 mb-3" />
+                        <p class="text-sm font-semibold text-muted-foreground">Belum ada bahan baku yang ditambahkan</p>
+                        <p class="text-xs text-muted-foreground/70 mt-1 max-w-sm">Tambahkan bahan baku yang digunakan dalam resep menu ini untuk melacak dan mengurangi stok otomatis saat menu terjual.</p>
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            class="mt-4 h-8 gap-1 text-xs"
+                            @click="addRecipeRow"
+                        >
+                            <Plus class="h-3 w-3" />
+                            Tambah Pertama
+                        </Button>
+                    </div>
+
+                    <div v-else class="rounded-xl border bg-background/30 overflow-hidden">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b bg-muted/30">
+                                    <th class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">Bahan Baku</th>
+                                    <th class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground w-40">Jumlah</th>
+                                    <th class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground w-24">Satuan</th>
+                                    <th class="px-4 py-3 text-xs font-bold uppercase tracking-wider text-muted-foreground w-16 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                <tr v-for="(ri, idx) in recipeItemsList" :key="idx" class="hover:bg-muted/10">
+                                    <td class="p-3">
+                                        <select
+                                            v-model="ri.ingredient_id"
+                                            class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus:ring-1 focus:ring-ring focus:outline-none"
+                                        >
+                                            <option value="" disabled>— Pilih Bahan Baku —</option>
+                                            <option v-for="ing in allIngredients" :key="ing.id" :value="ing.id">
+                                                {{ ing.name }} (Stok: {{ Number(ing.qty) }} {{ ing.unit }})
+                                            </option>
+                                        </select>
+                                    </td>
+                                    <td class="p-3">
+                                        <Input
+                                            v-model="ri.qty"
+                                            type="number"
+                                            min="0.01"
+                                            step="any"
+                                            class="h-9 text-xs"
+                                            placeholder="0.00"
+                                        />
+                                    </td>
+                                    <td class="p-3 text-xs font-medium text-muted-foreground px-4">
+                                        {{ getSmallUnit(ri.ingredient_id) }}
+                                    </td>
+                                    <td class="p-3 text-center">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            class="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            @click="removeRecipeRow(idx)"
+                                        >
+                                            <X class="h-4 w-4" />
+                                        </Button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex items-center justify-end gap-3 border-t pt-4">
+                    <Button variant="outline" @click="selectedMenuItem = null">Batal</Button>
+                    <Button
+                        class="flex items-center gap-1.5 bg-brand-600 font-semibold text-white hover:bg-brand-700"
+                        :disabled="savingRecipe"
+                        @click="saveMenuRecipe"
+                    >
+                        <Loader2
+                            v-if="savingRecipe"
+                            class="h-4 w-4 animate-spin"
+                        />
+                        <Check v-else class="h-4 w-4" />Simpan Resep
+                    </Button>
+                </div>
             </div>
         </div>
     </div>

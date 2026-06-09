@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed, watch } from "vue";
 import type { Column, FormField } from "@/components/CRUDTable.vue";
 import CRUDTable from "@/components/CRUDTable.vue";
 import team from "@/routes/team";
@@ -13,23 +13,6 @@ defineOptions({
 		],
 	},
 });
-
-const refreshPositions = async () => {
-	const res = await fetch("/api/positions?all=true", {
-		headers: { Accept: "application/json" },
-	});
-
-	if (res.ok) {
-		const data = await res.json();
-		const field = fields.find((f) => f.key === "position_id");
-
-		if (field) {
-			field.options = data.map((p: any) => ({ value: p.id, label: p.name }));
-		}
-	}
-};
-
-onMounted(refreshPositions);
 
 const columns: Column<any>[] = [
 	{ key: "name", label: "Nama", render: (val, row) => row.user?.name || "—" },
@@ -51,7 +34,18 @@ const columns: Column<any>[] = [
 	{ key: "status", label: "Status" },
 ];
 
-const fields: FormField[] = [
+const users = ref<any[]>([]);
+const userOptions = ref<{ value: any; label: string }[]>([]);
+const crudTableRef = ref<any>(null);
+
+const fields = computed<FormField[]>(() => [
+	{
+		key: "user_id",
+		label: "Hubungkan ke User (Opsional)",
+		type: "select",
+		options: userOptions.value,
+		disableOnEdit: true,
+	},
 	{ key: "name", label: "Nama Lengkap", type: "text", required: true },
 	{ key: "email", label: "Email Staf", type: "text", required: true },
 	{ key: "phone", label: "No. Telpon", type: "text" },
@@ -59,16 +53,9 @@ const fields: FormField[] = [
 		key: "password",
 		label: "Password",
 		type: "text",
-		placeholder: "Isi jika ganti password",
+		placeholder: "Isi jika ganti/buat password",
 	},
 	{ key: "salary", label: "Gaji Bulanan", type: "number", required: true },
-	{
-		key: "position_id",
-		label: "Jabatan",
-		type: "select",
-		required: true,
-		options: [],
-	},
 	{
 		key: "status",
 		label: "Status Staf",
@@ -79,13 +66,58 @@ const fields: FormField[] = [
 			{ value: "inactive", label: "Tidak Aktif" },
 		],
 	},
-];
+]);
 
 const badgeMap = { active: "success", inactive: "danger" };
+
+onMounted(async () => {
+	try {
+		const res = await fetch("/api/users?all=true");
+		if (res.ok) {
+			const data = await res.json();
+			users.value = data;
+			userOptions.value = data.map((u: any) => ({
+				value: u.id,
+				label: `${u.name} (${u.email})`,
+			}));
+		}
+	} catch (e) {
+		console.error("Gagal mengambil data user:", e);
+	}
+});
+
+watch(
+	() => crudTableRef.value?.formData?.user_id,
+	(newUserId) => {
+		if (crudTableRef.value?.dialogMode === "create") {
+			if (newUserId) {
+				const selectedUser = users.value.find(
+					(u) => u.id === Number(newUserId) || u.id === newUserId
+				);
+				if (selectedUser) {
+					crudTableRef.value.formData.name = selectedUser.name || "";
+					crudTableRef.value.formData.email = selectedUser.email || "";
+					crudTableRef.value.formData.phone = selectedUser.phone || "";
+				}
+			} else {
+				crudTableRef.value.formData.name = "";
+				crudTableRef.value.formData.email = "";
+				crudTableRef.value.formData.phone = "";
+			}
+		}
+	}
+);
 </script>
 
 <template>
     <div class="p-6">
-        <CRUDTable resource-name="Karyawan" api-url="/api/employees" :columns="columns" :form-fields="fields" :badge-map="badgeMap" />
+        <CRUDTable
+            ref="crudTableRef"
+            resource-name="Karyawan"
+            api-url="/api/employees"
+            :columns="columns"
+            :form-fields="fields"
+            :badge-map="badgeMap"
+        />
     </div>
 </template>

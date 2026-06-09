@@ -14,7 +14,7 @@ defineOptions({
 	},
 });
 
-const refreshRoles = async () => {
+const refreshRolesAndPositions = async () => {
 	const res = await fetch("/api/users/roles", {
 		headers: { Accept: "application/json" },
 	});
@@ -30,9 +30,25 @@ const refreshRoles = async () => {
 			}));
 		}
 	}
+
+	const posRes = await fetch("/api/positions?all=true", {
+		headers: { Accept: "application/json" },
+	});
+
+	if (posRes.ok) {
+		const data = await posRes.json();
+		const field = fields.find((f) => f.key === "position_id");
+
+		if (field) {
+			field.options = data.map((p: any) => ({
+				value: p.id,
+				label: p.name,
+			}));
+		}
+	}
 };
 
-onMounted(refreshRoles);
+onMounted(refreshRolesAndPositions);
 
 const columns: Column<any>[] = [
 	{ key: "name", label: "Nama" },
@@ -41,6 +57,11 @@ const columns: Column<any>[] = [
 		key: "roles",
 		label: "Role",
 		render: (val) => val?.map((r: any) => r.name).join(", ") || "—",
+	},
+	{
+		key: "position_id",
+		label: "Jabatan",
+		render: (val, row) => row.position?.name || "—",
 	},
 	{ key: "status", label: "Status" },
 ];
@@ -57,6 +78,13 @@ const fields: FormField[] = [
 		options: [],
 	},
 	{
+		key: "position_id",
+		label: "Jabatan",
+		type: "select",
+		required: false,
+		options: [],
+	},
+	{
 		key: "status",
 		label: "Status Akun",
 		type: "select",
@@ -68,11 +96,32 @@ const fields: FormField[] = [
 	},
 ];
 
+const handleFormOpened = ({ mode, row }: { mode: "create" | "edit"; row: any }) => {
+	const roleField = fields.find((f) => f.key === "role");
+	if (!roleField) {
+		return;
+	}
+
+	if (mode === "edit" && row) {
+		const userRole = row.role || (row.roles && row.roles[0]?.name);
+		if (userRole === "superadmin") {
+			roleField.options = [{ value: "superadmin", label: "Super Admin" }];
+			roleField.disabled = true;
+		} else {
+			roleField.disabled = false;
+			refreshRolesAndPositions();
+		}
+	} else {
+		roleField.disabled = false;
+		refreshRolesAndPositions();
+	}
+};
+
 const badgeMap = { active: "success", inactive: "danger" };
 </script>
 
 <template>
     <div class="p-6">
-        <CRUDTable resource-name="User" api-url="/api/users" :columns="columns" :form-fields="fields" :badge-map="badgeMap" />
+        <CRUDTable resource-name="User" api-url="/api/users" :columns="columns" :form-fields="fields" :badge-map="badgeMap" @form-opened="handleFormOpened" />
     </div>
 </template>

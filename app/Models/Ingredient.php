@@ -16,6 +16,7 @@ class Ingredient extends Model
         'min_qty' => 'decimal:2',
         'price' => 'decimal:2',
         'small_unit_qty' => 'decimal:2',
+        'conversion_factor' => 'decimal:2',
     ];
 
     public function category()
@@ -35,16 +36,70 @@ class Ingredient extends Model
 
     public function recalculateQty(): void
     {
-        $this->qty = $this->batches()->sum('qty');
+        $rawSum = $this->batches()
+            ->where(function ($query) {
+                $query->whereNull('expiration_date')
+                    ->orWhere('expiration_date', '>=', now()->toDateString());
+            })
+            ->sum('qty');
+
+        $this->attributes['qty'] = $rawSum;
+        $this->attributes['small_unit_qty'] = $rawSum;
         $this->save();
+    }
+
+    // Accessor to display quantity in main unit (e.g. kg)
+    public function getQtyAttribute($value)
+    {
+        $factor = (float) ($this->conversion_factor ?? 1.0);
+
+        return $value / $factor;
+    }
+
+    // Mutator to store quantity in base/small unit (e.g. gram)
+    public function setQtyAttribute($value)
+    {
+        $factor = (float) ($this->conversion_factor ?? 1.0);
+        $this->attributes['qty'] = $value * $factor;
+    }
+
+    // Accessor for min_qty in main unit
+    public function getMinQtyAttribute($value)
+    {
+        $factor = (float) ($this->conversion_factor ?? 1.0);
+
+        return $value / $factor;
+    }
+
+    // Mutator for min_qty to store in base/small unit
+    public function setMinQtyAttribute($value)
+    {
+        $factor = (float) ($this->conversion_factor ?? 1.0);
+        $this->attributes['min_qty'] = $value * $factor;
+    }
+
+    // Accessor for small_unit_qty (returns the raw base quantity, e.g. grams)
+    public function getSmallUnitQtyAttribute()
+    {
+        return (float) ($this->attributes['qty'] ?? 0);
+    }
+
+    // Mutator for small_unit_qty
+    public function setSmallUnitQtyAttribute($value)
+    {
+        $this->attributes['small_unit_qty'] = $value;
     }
 
     protected static function booted(): void
     {
         static::saving(function (Ingredient $item) {
-            if ($item->qty <= 0) {
+            // Check status based on the display value comparison
+            $qty = $item->qty;
+            $minQty = $item->min_qty;
+
+            if ($qty <= 0) {
                 $item->status = 'out_of_stock';
-            } elseif ($item->qty <= $item->min_qty) {
+            } elseif ($qty <= $minQty) {
                 $item->status = 'low_stock';
             } else {
                 $item->status = 'in_stock';

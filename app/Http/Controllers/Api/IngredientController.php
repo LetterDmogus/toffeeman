@@ -53,14 +53,18 @@ class IngredientController extends BaseController
             'sku' => ['nullable', 'string', 'max:100', 'unique:ingredients,sku'],
             'ingredient_category_id' => ['required', 'exists:ingredient_categories,id'],
             'price' => ['required', 'numeric', 'min:0'],
-            'qty' => ['required', 'numeric', 'min:0'],
+            'qty' => ['nullable', 'numeric', 'min:0'],
             'unit' => ['required', 'string', 'max:50'],
+            'small_unit' => ['required', 'string', 'max:50'],
+            'conversion_factor' => ['required', 'numeric', 'min:0.01'],
             'min_qty' => ['required', 'numeric', 'min:0'],
             'storage_temperature' => ['nullable', 'string', 'max:100'],
-            'small_unit_qty' => ['required', 'numeric', 'min:0'],
+            'small_unit_qty' => ['nullable', 'numeric', 'min:0'],
             'description' => ['nullable', 'string'],
         ]);
 
+        $validated['qty'] = $validated['qty'] ?? 0;
+        $validated['small_unit_qty'] = $validated['small_unit_qty'] ?? 0;
         $validated['slug'] = Str::slug($validated['name']);
         $validated['created_by'] = auth()->id();
 
@@ -89,6 +93,8 @@ class IngredientController extends BaseController
             'price' => ['sometimes', 'numeric', 'min:0'],
             'qty' => ['sometimes', 'numeric', 'min:0'],
             'unit' => ['sometimes', 'string', 'max:50'],
+            'small_unit' => ['sometimes', 'string', 'max:50'],
+            'conversion_factor' => ['sometimes', 'numeric', 'min:0.01'],
             'min_qty' => ['sometimes', 'numeric', 'min:0'],
             'storage_temperature' => ['nullable', 'string', 'max:100'],
             'small_unit_qty' => ['sometimes', 'numeric', 'min:0'],

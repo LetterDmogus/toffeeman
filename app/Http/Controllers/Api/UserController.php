@@ -16,7 +16,7 @@ class UserController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = User::with(['roles', 'employee.position']);
+        $query = User::with(['roles', 'position', 'employee']);
 
         if ($request->filled('search')) {
             $search = $request->string('search');
@@ -48,9 +48,6 @@ class UserController extends BaseController
         return response()->json($users);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -59,7 +56,8 @@ class UserController extends BaseController
             'phone' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'string', 'min:8'],
             'status' => ['required', 'string', 'in:active,inactive,suspended'],
-            'role' => ['required', 'string', 'exists:roles,name'],
+            'role' => ['required', 'string', 'exists:roles,name', 'not_in:superadmin'],
+            'position_id' => ['nullable', 'exists:positions,id'],
         ]);
 
         $user = User::create([
@@ -68,11 +66,12 @@ class UserController extends BaseController
             'phone' => $validated['phone'],
             'password' => bcrypt($validated['password']),
             'status' => $validated['status'],
+            'position_id' => $validated['position_id'] ?? null,
         ]);
 
         $user->assignRole($validated['role']);
 
-        return response()->json($user->load('roles'), 201);
+        return response()->json($user->load(['roles', 'position']), 201);
     }
 
     /**
@@ -80,7 +79,7 @@ class UserController extends BaseController
      */
     public function show(User $user): JsonResponse
     {
-        return response()->json($user->load(['roles', 'employee.position']));
+        return response()->json($user->load(['roles', 'position', 'employee']));
     }
 
     /**
@@ -94,7 +93,8 @@ class UserController extends BaseController
             'phone' => ['nullable', 'string', 'max:30'],
             'password' => ['nullable', 'string', 'min:8'],
             'status' => ['sometimes', 'string', 'in:active,inactive,suspended'],
-            'role' => ['sometimes', 'string', 'exists:roles,name'],
+            'role' => ['sometimes', 'string', 'exists:roles,name', 'not_in:superadmin'],
+            'position_id' => ['nullable', 'exists:positions,id'],
         ]);
 
         if (isset($validated['password'])) {
@@ -103,13 +103,17 @@ class UserController extends BaseController
             unset($validated['password']);
         }
 
+        if ($user->hasRole('superadmin')) {
+            unset($validated['role']);
+        }
+
         $user->update($validated);
 
         if (isset($validated['role'])) {
             $user->syncRoles([$validated['role']]);
         }
 
-        return response()->json($user->fresh('roles'));
+        return response()->json($user->fresh(['roles', 'position']));
     }
 
     /**
@@ -153,6 +157,6 @@ class UserController extends BaseController
      */
     public function roles(): JsonResponse
     {
-        return response()->json(Role::all());
+        return response()->json(Role::where('name', '!=', 'superadmin')->get());
     }
 }

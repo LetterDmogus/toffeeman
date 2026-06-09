@@ -122,6 +122,7 @@ const fields: FormField[] = [
 		label: "Total Stok Keseluruhan",
 		type: "number",
 		required: true,
+		disabled: true,
 	},
 	{ key: "unit", label: "Satuan", type: "text", required: true },
 	{ key: "min_qty", label: "Min Stok", type: "number", required: true },

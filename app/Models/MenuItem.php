@@ -43,4 +43,9 @@ class MenuItem extends Model
     {
         return $this->belongsTo(InventoryItem::class);
     }
+
+    public function recipeItems()
+    {
+        return $this->hasMany(RecipeItem::class);
+    }
 }

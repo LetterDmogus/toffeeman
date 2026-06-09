@@ -18,7 +18,7 @@ class MenuItemController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = MenuItem::with(['category', 'addOns', 'options.values']);
+        $query = MenuItem::with(['category', 'addOns', 'options.values', 'recipeItems.ingredient']);
 
         if ($request->filled('search')) {
             $search = $request->string('search');
@@ -69,6 +69,9 @@ class MenuItemController extends BaseController
             'options.*.values' => ['required', 'array'],
             'options.*.values.*.name' => ['required', 'string'],
             'options.*.values.*.additional_price' => ['required', 'numeric', 'min:0'],
+            'recipe' => ['nullable', 'array'],
+            'recipe.*.ingredient_id' => ['required', 'integer', 'exists:ingredients,id'],
+            'recipe.*.qty' => ['required', 'numeric', 'min:0.01'],
         ]);
 
         if (($validated['status'] ?? null) === 'available' && ! empty($validated['inventory_item_id'])) {
@@ -81,7 +84,7 @@ class MenuItemController extends BaseController
             }
         }
 
-        $itemData = collect($validated)->except(['add_on_ids', 'options'])->all();
+        $itemData = collect($validated)->except(['add_on_ids', 'options', 'recipe'])->all();
         $itemData['slug'] = Str::slug($validated['name']);
 
         if (isset($validated['image_url'])) {
@@ -90,25 +93,16 @@ class MenuItemController extends BaseController
 
         $item = MenuItem::create($itemData);
 
-        if ($request->has('add_on_ids')) {
-            $item->addOns()->sync($request->add_on_ids);
-        }
-
-        if ($request->has('options')) {
-            foreach ($request->options as $optionData) {
-                $option = $item->options()->create([
-                    'name' => $optionData['name'],
-                    'is_required' => $optionData['is_required'] ?? false,
-                    'type' => $optionData['type'] ?? 'single',
+        if ($request->has('recipe')) {
+            foreach ($request->recipe as $recipeData) {
+                $item->recipeItems()->create([
+                    'ingredient_id' => $recipeData['ingredient_id'],
+                    'qty' => $recipeData['qty'],
                 ]);
-
-                foreach ($optionData['values'] as $valueData) {
-                    $option->values()->create($valueData);
-                }
             }
         }
 
-        return response()->json($item->load(['category', 'addOns', 'options.values']), 201);
+        return response()->json($item->load(['category', 'addOns', 'options.values', 'recipeItems.ingredient']), 201);
     }
 
     /**
@@ -116,7 +110,7 @@ class MenuItemController extends BaseController
      */
     public function show(MenuItem $menuItem): JsonResponse
     {
-        return response()->json($menuItem->load(['category', 'addOns', 'options.values']));
+        return response()->json($menuItem->load(['category', 'addOns', 'options.values', 'recipeItems.ingredient']));
     }
 
     /**
@@ -145,6 +139,9 @@ class MenuItemController extends BaseController
             'options.*.values' => ['required', 'array'],
             'options.*.values.*.name' => ['required', 'string'],
             'options.*.values.*.additional_price' => ['required', 'numeric', 'min:0'],
+            'recipe' => ['nullable', 'array'],
+            'recipe.*.ingredient_id' => ['required', 'integer', 'exists:ingredients,id'],
+            'recipe.*.qty' => ['required', 'numeric', 'min:0.01'],
         ]);
 
         $newStatus = array_key_exists('status', $validated) ? $validated['status'] : $menuItem->status;
@@ -160,7 +157,7 @@ class MenuItemController extends BaseController
             }
         }
 
-        $itemData = collect($validated)->except(['add_on_ids', 'options'])->all();
+        $itemData = collect($validated)->except(['add_on_ids', 'options', 'recipe'])->all();
 
         if (isset($validated['name'])) {
             $itemData['slug'] = Str::slug($validated['name']);
@@ -191,7 +188,17 @@ class MenuItemController extends BaseController
             }
         }
 
-        return response()->json($menuItem->fresh()->load(['category', 'addOns', 'options.values']));
+        if ($request->has('recipe')) {
+            $menuItem->recipeItems()->delete(); // delete and recreate
+            foreach ($request->recipe as $recipeData) {
+                $menuItem->recipeItems()->create([
+                    'ingredient_id' => $recipeData['ingredient_id'],
+                    'qty' => $recipeData['qty'],
+                ]);
+            }
+        }
+
+        return response()->json($menuItem->fresh()->load(['category', 'addOns', 'options.values', 'recipeItems.ingredient']));
     }
 
     /**

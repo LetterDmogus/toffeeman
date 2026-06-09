@@ -68,6 +68,7 @@ export type FormField = {
 	options?: { value: string | number | boolean; label: string }[];
 	advanced?: boolean;
 	disableOnEdit?: boolean;
+	disabled?: boolean;
 };
 
 // ─── Paginated response shape ─────────────────────────────────────────────────
@@ -615,6 +616,12 @@ function isBadgeColumn(col: Column<T>, row: T): boolean {
 }
 
 const totalPages = computed(() => pagination.value.last_page);
+
+defineExpose({
+	formData,
+	dialogMode,
+	fetchData,
+});
 </script>
 
 <template>
@@ -1106,7 +1113,7 @@ const totalPages = computed(() => pagination.value.last_page);
                             :placeholder="field.placeholder"
                             class="h-10 rounded-lg focus-visible:ring-brand-500"
                             :disabled="
-                                field.key === 'qty' ||
+                                field.disabled ||
                                 (dialogMode === 'edit' && field.disableOnEdit)
                             "
                         />
@@ -1232,7 +1239,7 @@ const totalPages = computed(() => pagination.value.last_page);
                                     "
                                     class="h-10 rounded-lg text-sm focus-visible:ring-brand-500"
                                     :disabled="
-                                        field.key === 'qty' ||
+                                        field.disabled ||
                                         (dialogMode === 'edit' &&
                                             field.disableOnEdit)
                                     "
