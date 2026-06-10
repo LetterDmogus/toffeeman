@@ -13,10 +13,10 @@ return new class extends Migration
     {
         Schema::table('order_items', function (Blueprint $table) {
             $table->dropColumn(['item_type', 'item_id']);
-            
+
             $table->foreignId('menu_item_id')->nullable()->after('order_id')->constrained()->nullOnDelete();
             $table->foreignId('package_id')->nullable()->after('menu_item_id')->constrained()->nullOnDelete();
-            
+
             $table->renameColumn('base_price', 'price');
             $table->renameColumn('total_price', 'subtotal');
         });
@@ -30,7 +30,7 @@ return new class extends Migration
         Schema::table('order_items', function (Blueprint $table) {
             $table->string('item_type')->nullable();
             $table->unsignedBigInteger('item_id')->nullable();
-            
+
             $table->dropConstrainedForeignId('menu_item_id');
             $table->dropConstrainedForeignId('package_id');
             $table->renameColumn('price', 'base_price');

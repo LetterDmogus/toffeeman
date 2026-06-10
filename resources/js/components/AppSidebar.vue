@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from "@inertiajs/vue3";
+import { Link, usePage } from "@inertiajs/vue3";
 import {
 	ArrowDownToLine,
 	ArrowRightLeft,
@@ -9,6 +9,8 @@ import {
 	Carrot,
 	ChefHat,
 	ClipboardCheck,
+	ClipboardList,
+	Clock,
 	Contact,
 	FolderClosed,
 	Gift,
@@ -19,12 +21,14 @@ import {
 	PlusCircle,
 	Receipt,
 	Search,
+	Settings,
 	ShieldCheck,
 	Table2,
 	Tags,
 	TicketPercent,
 	Users,
 	UtensilsCrossed,
+	Wallet,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import AppLogo from "@/components/AppLogo.vue";
@@ -44,6 +48,10 @@ import * as routes from "@/routes";
 import catalog from "@/routes/catalog";
 import ops from "@/routes/ops";
 import team from "@/routes/team";
+import siteSettings from "@/routes/site-settings";
+import reports from "@/routes/reports";
+import { kiosk as attendanceKiosk, index as attendanceIndex } from "@/routes/attendance";
+import payrollRoutes from "@/routes/payroll/index";
 import type { NavItem } from "@/types";
 
 const catalogNavItems: NavItem[] = [
@@ -107,27 +115,53 @@ const teamNavItems: NavItem[] = [
 	{ title: "Hak Akses Role", href: team.rolesPermissions().url, icon: ShieldCheck },
 ];
 
+const siteSettingsNavItems: NavItem[] = [
+	{ title: "IP & Lokasi", href: siteSettings.ipLocation.edit().url, icon: Settings },
+];
+
+const page = usePage();
+const user = computed(() => page.props.auth.user);
+const permissions = computed<string[]>(() => (page.props.auth as any).permissions ?? []);
+
+const hasPermission = (permission: string): boolean => {
+	if (!user.value) return false;
+	if (user.value.role === "superadmin") return true;
+	return permissions.value.includes(permission);
+};
+
+const isManagerOrAdmin = computed(() => {
+	return user.value && ["superadmin", "manager", "admin"].includes(user.value.role);
+});
+
 const searchQuery = ref("");
 
-const mainNavItems = [
-	{ title: "Dashboard", href: routes.dashboard().url, icon: LayoutGrid },
-	{ title: "Kasir (POS)", href: routes.pos().url, icon: Monitor },
-	{ title: "Dapur (KDS)", href: routes.kitchen().url, icon: ChefHat },
-	{ title: "Daftar Pesanan", href: routes.orders().url, icon: Receipt },
-	{ title: "Laporan Keuangan", href: routes.reports().url, icon: BarChart3 },
-];
+const mainNavItems = computed(() => {
+	const items = [
+		{ title: "Dashboard", href: routes.dashboard().url, icon: LayoutGrid, permission: null },
+		{ title: "Kasir (POS)", href: routes.pos().url, icon: Monitor, permission: "pos-access" },
+		{ title: "Dapur (KDS)", href: routes.kitchen().url, icon: ChefHat, permission: "kitchen-access" },
+		{ title: "Daftar Pesanan", href: routes.orders().url, icon: Receipt, permission: "orders-access" },
+		{ title: "Kios Absensi", href: attendanceKiosk().url, icon: Clock, permission: "kiosk-attendance-access" },
+		{ title: "Manajemen Absensi", href: attendanceIndex().url, icon: ClipboardList, permission: "attendance-management" },
+		{ title: "Laporan Keuangan", href: routes.reports().url, icon: BarChart3, permission: "view-reports" },
+		{ title: "Laporan Pesanan", href: reports.orders().url, icon: ClipboardCheck, permission: "view-reports" },
+		{ title: "Penggajian", href: payrollRoutes.index().url, icon: Wallet, permission: "payroll-access" },
+	];
+	return items.filter(item => !item.permission || hasPermission(item.permission));
+});
 
 const filteredMainItems = computed(() => {
 	if (!searchQuery.value) {
-		return mainNavItems;
+		return mainNavItems.value;
 	}
 
-	return mainNavItems.filter((item) =>
+	return mainNavItems.value.filter((item) =>
 		item.title.toLowerCase().includes(searchQuery.value.toLowerCase()),
 	);
 });
 
 const filteredCatalogItems = computed(() => {
+	if (!hasPermission("manage-catalog")) return [];
 	if (!searchQuery.value) {
 		return catalogNavItems;
 	}
@@ -138,6 +172,7 @@ const filteredCatalogItems = computed(() => {
 });
 
 const filteredOpsIngredientsItems = computed(() => {
+	if (!hasPermission("manage-ops-ingredients")) return [];
 	if (!searchQuery.value) {
 		return opsIngredientsNavItems;
 	}
@@ -148,6 +183,7 @@ const filteredOpsIngredientsItems = computed(() => {
 });
 
 const filteredOpsEquipmentItems = computed(() => {
+	if (!hasPermission("manage-ops-equipment")) return [];
 	if (!searchQuery.value) {
 		return opsEquipmentNavItems;
 	}
@@ -158,11 +194,23 @@ const filteredOpsEquipmentItems = computed(() => {
 });
 
 const filteredTeamItems = computed(() => {
+	if (!hasPermission("manage-team")) return [];
 	if (!searchQuery.value) {
 		return teamNavItems;
 	}
 
 	return teamNavItems.filter((item) =>
+		item.title.toLowerCase().includes(searchQuery.value.toLowerCase()),
+	);
+});
+
+const filteredSiteSettingsItems = computed(() => {
+	if (!hasPermission("settings-access")) return [];
+	if (!searchQuery.value) {
+		return siteSettingsNavItems;
+	}
+
+	return siteSettingsNavItems.filter((item) =>
 		item.title.toLowerCase().includes(searchQuery.value.toLowerCase()),
 	);
 });
@@ -233,6 +281,11 @@ const filteredTeamItems = computed(() => {
                 v-if="filteredTeamItems.length > 0"
                 label="Manajemen Tim"
                 :items="filteredTeamItems"
+            />
+            <NavMain
+                v-if="filteredSiteSettingsItems.length > 0"
+                label="Site Settings"
+                :items="filteredSiteSettingsItems"
             />
         </SidebarContent>
 

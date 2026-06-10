@@ -7,13 +7,13 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Permission\Traits\HasPermissions;
+use Spatie\Permission\Traits\HasRoles;
 
 #[Fillable(['name', 'slug', 'description', 'starting_page'])]
 class Position extends Model
 {
     /** @use HasFactory<PositionFactory> */
-    use HasFactory, HasPermissions, SoftDeletes;
+    use HasFactory, HasRoles, SoftDeletes;
 
     protected string $guard_name = 'web';
 

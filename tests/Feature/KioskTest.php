@@ -27,7 +27,7 @@ class KioskTest extends TestCase
     private function createTable(string $status = 'available'): Table
     {
         return Table::create([
-            'number' => 'T-' . fake()->unique()->numberBetween(1, 99),
+            'number' => 'T-'.fake()->unique()->numberBetween(1, 99),
             'capacity' => 4,
             'location' => 'indoor',
             'status' => $status,

@@ -51,7 +51,7 @@ class KioskAuthController extends Controller
 
         $login = $validated['login'];
 
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = User::where('email', $login)
             ->orWhere('phone', $login)
             ->first();

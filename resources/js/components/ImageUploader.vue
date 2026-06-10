@@ -6,6 +6,7 @@ import {
 	RotateCw,
 	UploadCloud,
 	X,
+	Camera,
 } from "lucide-vue-next";
 import { ref } from "vue";
 import { Button } from "@/components/ui/button";
@@ -18,18 +19,85 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 
+const cameraOpen = ref(false);
+const videoElement = ref<HTMLVideoElement | null>(null);
+let webcamStream: MediaStream | null = null;
+
+async function openWebcam() {
+	cameraOpen.value = true;
+	error.value = "";
+	try {
+		webcamStream = await navigator.mediaDevices.getUserMedia({
+			video: { width: 640, height: 480, facingMode: "user" },
+			audio: false,
+		});
+		setTimeout(() => {
+			if (videoElement.value) {
+				videoElement.value.srcObject = webcamStream;
+			}
+		}, 100);
+	} catch (err) {
+		console.error("Camera access failed:", err);
+		error.value = "Gagal mengakses kamera perangkat.";
+		cameraOpen.value = false;
+	}
+}
+
+function closeWebcam() {
+	if (webcamStream) {
+		webcamStream.getTracks().forEach((track) => track.stop());
+		webcamStream = null;
+	}
+	cameraOpen.value = false;
+}
+
+function capturePhoto() {
+	if (!videoElement.value) {
+		return;
+	}
+	const canvas = document.createElement("canvas");
+	canvas.width = videoElement.value.videoWidth || 640;
+	canvas.height = videoElement.value.videoHeight || 480;
+	const ctx = canvas.getContext("2d");
+	if (ctx) {
+		ctx.drawImage(videoElement.value, 0, 0, canvas.width, canvas.height);
+		const base64 = canvas.toDataURL("image/jpeg", 0.9);
+		editorImageSrc.value = base64;
+		rotation.value = 0;
+		cropBox.value = { x: 10, y: 10, w: 80, h: 80 };
+		editorOpen.value = true;
+	}
+	closeWebcam();
+}
+
+const loadScript = (url: string) => {
+	return new Promise((resolve, reject) => {
+		if ((window as any).faceapi) {
+			resolve((window as any).faceapi);
+			return;
+		}
+		const script = document.createElement("script");
+		script.src = url;
+		script.onload = () => resolve((window as any).faceapi);
+		script.onerror = (err) => reject(err);
+		document.body.appendChild(script);
+	});
+};
+
 const props = withDefaults(
 	defineProps<{
 		modelValue?: string;
 		label?: string;
 		placeholder?: string;
 		maxSizeMb?: number;
+		isFacePhoto?: boolean;
 	}>(),
 	{
 		modelValue: "",
 		label: "Gambar",
 		placeholder: "Drag and drop gambar Anda di sini, atau klik untuk memilih",
 		maxSizeMb: 5,
+		isFacePhoto: false,
 	},
 );
 
@@ -199,7 +267,7 @@ function applyEdits() {
 	// Enable CORS to avoid tainted canvas error when editing external image URLs (e.g. from seeders)
 	img.crossOrigin = "anonymous";
 	img.src = editorImageSrc.value;
-	img.onload = () => {
+	img.onload = async () => {
 		const canvas = document.createElement("canvas");
 		const ctx = canvas.getContext("2d");
 
@@ -238,6 +306,43 @@ function applyEdits() {
 			cropW,
 			cropH,
 		);
+
+		error.value = "";
+
+		// Face verification validation
+		if (props.isFacePhoto) {
+			uploading.value = true;
+			error.value = "Memverifikasi wajah manusia...";
+			
+			let faceapi = (window as any).faceapi;
+			if (!faceapi) {
+				try {
+					faceapi = await loadScript("https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js");
+				} catch (e) {
+					error.value = "Gagal memuat library deteksi wajah AI.";
+					uploading.value = false;
+					return;
+				}
+			}
+
+			try {
+				if (!faceapi.nets.tinyFaceDetector.params) {
+					await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+				}
+				
+				const detection = await faceapi.detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions());
+				if (!detection) {
+					error.value = "Wajah manusia tidak terdeteksi! Harap pastikan foto wajah jelas dan menghadap kamera.";
+					uploading.value = false;
+					return;
+				}
+			} catch (e) {
+				console.error("Gagal melakukan verifikasi wajah:", e);
+			}
+			
+			uploading.value = false;
+			error.value = "";
+		}
 
 		const editedBase64 = canvas.toDataURL("image/jpeg", 0.9);
 		emit("update:modelValue", editedBase64);
@@ -302,11 +407,10 @@ function applyEdits() {
         <!-- Drag & Drop Uploader Area -->
         <div
             v-else
-            @click="triggerFileInput"
             @dragover.prevent="isDragActive = true"
             @dragleave.prevent="isDragActive = false"
             @drop.prevent="handleDrop"
-            class="flex aspect-video max-h-[220px] cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-muted/5 p-6 text-center transition-all duration-200 hover:bg-muted/10"
+            class="flex aspect-video max-h-[220px] flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed bg-muted/5 p-6 text-center transition-all duration-200"
             :class="[
                 isDragActive
                     ? 'border-brand-500 bg-brand-500/5 ring-2 ring-brand-500/10'
@@ -320,13 +424,33 @@ function applyEdits() {
                 <UploadCloud v-else class="h-6 w-6" />
             </div>
 
-            <div class="flex flex-col gap-1 px-4">
+            <div class="flex flex-col gap-2 px-4 w-full items-center">
                 <p class="text-sm font-medium text-foreground">
-                    {{ uploading ? 'Memproses gambar...' : 'Unggah Gambar' }}
+                    {{ uploading ? 'Memproses gambar...' : 'Pilih atau Ambil Foto' }}
                 </p>
-                <p class="text-xs text-muted-foreground">
+                <p class="text-[10px] text-muted-foreground max-w-[200px] mb-1">
                     {{ placeholder }}
                 </p>
+                <div v-if="!uploading" class="flex gap-2">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        @click="triggerFileInput"
+                        class="text-xs h-8"
+                    >
+                        Pilih File
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        @click="openWebcam"
+                        class="text-xs h-8 gap-1.5"
+                    >
+                        <Camera class="h-3.5 w-3.5" /> Kamera
+                    </Button>
+                </div>
             </div>
         </div>
 
@@ -344,7 +468,10 @@ function applyEdits() {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div class="flex flex-col items-center gap-4 py-2">
+                <div class="flex flex-col items-center gap-4 py-2 w-full">
+                    <p v-if="error" class="text-xs text-destructive text-center w-full font-semibold bg-destructive/10 border border-destructive/20 rounded p-2 select-none">
+                        {{ error }}
+                    </p>
                     <!-- Image Work Area Container -->
                     <div
                         ref="containerElement"
@@ -445,6 +572,43 @@ function applyEdits() {
                             <Check class="h-4 w-4" /> Terapkan
                         </Button>
                     </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <!-- 📷 CAMERA WEBCAM DIALOG -->
+        <Dialog :open="cameraOpen" @update:open="val => !val && closeWebcam()">
+            <DialogContent class="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Ambil Foto Wajah</DialogTitle>
+                    <DialogDescription>
+                        Hadapkan wajah Anda ke kamera, lalu klik tombol "Ambil Foto" di bawah.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div class="flex flex-col items-center justify-center overflow-hidden rounded-lg border bg-slate-950 aspect-video max-h-[300px] w-full relative">
+                    <video
+                        ref="videoElement"
+                        autoplay
+                        playsinline
+                        muted
+                        class="w-full h-full object-cover scale-x-[-1]"
+                    ></video>
+                    <!-- Guideline overlay -->
+                    <div class="absolute inset-0 pointer-events-none flex items-center justify-center border-[20px] border-slate-950/40">
+                        <div class="w-40 h-40 border-2 border-dashed border-white/25 rounded-full"></div>
+                    </div>
+                </div>
+
+                <DialogFooter class="flex gap-2 justify-end sm:justify-end">
+                    <Button variant="ghost" type="button" @click="closeWebcam">Batal</Button>
+                    <Button
+                        type="button"
+                        @click="capturePhoto"
+                        class="gap-1.5 bg-brand-600 text-white hover:bg-brand-700"
+                    >
+                        <Camera class="h-4 w-4" /> Ambil Foto
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

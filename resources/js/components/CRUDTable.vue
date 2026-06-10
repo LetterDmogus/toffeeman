@@ -19,6 +19,7 @@ import {
 } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
 import ImageUploader from "@/components/ImageUploader.vue";
+import SearchableSelect from "@/components/ui/select/SearchableSelect.vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -62,6 +63,8 @@ export type FormField = {
 		| "url"
 		| "date"
 		| "image"
+		| "phone"
+		| "tel"
 		| "tags";
 	placeholder?: string;
 	required?: boolean;
@@ -1061,12 +1064,12 @@ defineExpose({
                             >
                         </Label>
 
-                        <!-- Image Upload Component -->
                         <ImageUploader
                             v-if="field.type === 'image'"
                             v-model="formData[field.key]"
                             :label="field.label"
                             :placeholder="field.placeholder"
+                            :is-face-photo="field.key === 'face_photo_path'"
                         />
 
                         <!-- Textarea -->
@@ -1082,36 +1085,27 @@ defineExpose({
                             "
                         />
 
-                        <!-- Select -->
-                        <select
+                        <!-- Searchable Select -->
+                        <SearchableSelect
                             v-else-if="field.type === 'select'"
                             :id="`field-${field.key}`"
                             v-model="formData[field.key]"
-                            class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-sm focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                            :options="field.options || []"
+                            :placeholder="`Pilih ${field.label}`"
                             :disabled="
                                 dialogMode === 'edit' && field.disableOnEdit
                             "
-                        >
-                            <option value="" disabled>
-                                Pilih {{ field.label }}
-                            </option>
-                            <option
-                                v-for="opt in field.options"
-                                :key="opt.value"
-                                :value="opt.value"
-                            >
-                                {{ opt.label }}
-                            </option>
-                        </select>
+                        />
 
                         <!-- Default Input -->
                         <Input
                             v-else
                             :id="`field-${field.key}`"
-                            :type="field.type === 'tags' ? 'text' : field.type"
+                            :type="field.type === 'phone' || field.type === 'tel' ? 'tel' : (field.type === 'tags' ? 'text' : field.type)"
                             v-model="formData[field.key] as string"
                             :placeholder="field.placeholder"
                             class="h-10 rounded-lg focus-visible:ring-brand-500"
+                            :pattern="field.type === 'phone' || field.type === 'tel' ? '[+]?[0-9]*' : undefined"
                             :disabled="
                                 field.disabled ||
                                 (dialogMode === 'edit' && field.disableOnEdit)

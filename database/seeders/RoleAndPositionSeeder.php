@@ -20,12 +20,19 @@ class RoleAndPositionSeeder extends Seeder
 
         // Create Permissions
         $permissions = [
-            'manage-catalog',
-            'manage-ops',
-            'manage-team',
-            'view-reports',
-            'pos-access',
-            'kitchen-access',
+            'manage-catalog',            // CRUD Katalog Produk
+            'manage-ops-ingredients',    // CRUD Stok & Bahan Baku
+            'manage-ops-equipment',      // CRUD Meja & Peralatan
+            'manage-team',               // CRUD Manajemen Tim
+            'view-reports',              // Hak akses Laporan Keuangan
+            'pos-access',                // Hak akses Kasir (POS)
+            'kitchen-access',            // Hak akses Dapur (KDS)
+            'orders-access',             // Hak akses Daftar Pesanan
+            'kiosk-attendance-access',   // Hak akses Kios Absensi (scan)
+            'attendance-management',     // Hak akses Manajemen Absensi (verifikasi & manual)
+            'settings-access',           // Hak akses Pengaturan Sistem (IP & Lokasi)
+            'payroll-access',            // Hak akses melihat slip gaji
+            'payroll-manage',            // Generate, edit, approve, pay slip gaji
         ];
 
         foreach ($permissions as $perm) {
@@ -76,11 +83,11 @@ class RoleAndPositionSeeder extends Seeder
             if ($pos['slug'] === 'manager') {
                 $position->syncPermissions($permissions);
             } elseif ($pos['slug'] === 'cashier') {
-                $position->syncPermissions(['pos-access']);
+                $position->syncPermissions(['pos-access', 'orders-access', 'kiosk-attendance-access']);
             } elseif ($pos['slug'] === 'chef') {
                 $position->syncPermissions(['kitchen-access']);
             } elseif ($pos['slug'] === 'waiter') {
-                $position->syncPermissions(['pos-access']);
+                $position->syncPermissions(['pos-access', 'kiosk-attendance-access']);
             }
         }
     }

@@ -66,18 +66,21 @@ class AddOnController extends BaseController
     public function destroy(AddOn $addOn): JsonResponse
     {
         $addOn->delete();
+
         return response()->json(['message' => 'Add-on deleted.']);
     }
 
     public function restore(AddOn $addOn): JsonResponse
     {
         $addOn->restore();
+
         return response()->json($addOn);
     }
 
     public function forceDelete(AddOn $addOn): JsonResponse
     {
         $addOn->forceDelete();
+
         return response()->json(['message' => 'Add-on permanently deleted.']);
     }
 }

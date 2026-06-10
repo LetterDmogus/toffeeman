@@ -7,14 +7,15 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['user_id', 'salary', 'status', 'hired_at'])]
+#[Fillable(['user_id', 'salary', 'face_photo_path', 'status', 'hired_at'])]
 class Employee extends Model
 {
     /** @use HasFactory<EmployeeFactory> */
     use HasFactory, SoftDeletes;
 
-    protected $appends = ['position_id', 'position'];
+    protected $appends = ['position_id', 'position', 'name', 'email', 'phone'];
 
     /**
      * Get the user associated with the employee.
@@ -38,6 +39,38 @@ class Employee extends Model
     public function getPositionAttribute(): ?Position
     {
         return $this->user?->position;
+    }
+
+    /**
+     * Get the employee's name from the user relationship.
+     */
+    public function getNameAttribute(): ?string
+    {
+        return $this->user?->name;
+    }
+
+    /**
+     * Get the employee's email from the user relationship.
+     */
+    public function getEmailAttribute(): ?string
+    {
+        return $this->user?->email;
+    }
+
+    /**
+     * Get the employee's phone from the user relationship.
+     */
+    public function getPhoneAttribute(): ?string
+    {
+        return $this->user?->phone;
+    }
+
+    /**
+     * Get the public URL for the face photo path.
+     */
+    public function getFacePhotoPathAttribute(?string $value): ?string
+    {
+        return $value ? Storage::url($value) : null;
     }
 
     /**

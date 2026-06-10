@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link } from "@inertiajs/vue3";
 import {
+	Banknote,
+	Building2,
 	Calendar,
 	Check,
 	CheckCircle2,
@@ -14,6 +16,7 @@ import {
 	Flame,
 	Loader2,
 	Printer,
+	QrCode,
 	Receipt,
 	RefreshCw,
 	Search,
@@ -57,8 +60,9 @@ defineOptions({
 const orders = ref<any[]>([]);
 const loading = ref(false);
 const search = ref("");
-const statusFilter = ref("");
+const statusFilter = ref<string[]>(['pending', 'processing', 'ready']);
 const paymentFilter = ref("");
+const dateFilter = ref("today");
 const selectedOrder = ref<any | null>(null);
 const detailOpen = ref(false);
 const paymentOpen = ref(false);
@@ -319,8 +323,9 @@ const handleFilter = () => {
 
 const resetFilters = () => {
 	search.value = "";
-	statusFilter.value = "";
+	statusFilter.value = ['pending', 'processing', 'ready'];
 	paymentFilter.value = "";
+	dateFilter.value = "today";
 	fetchOrders(1);
 };
 
@@ -335,6 +340,7 @@ const openPaymentModal = (order: any) => {
 	selectedOrder.value = order;
 	selectedPaymentMethod.value = "cash";
 	discountAmount.value = order.discount_amount || 0;
+	cashPaid.value = Math.max(0, order.final_amount - discountAmount.value);
 	paymentOpen.value = true;
 };
 
@@ -362,9 +368,23 @@ const formatDate = (dateString: string) => {
 	}).format(date);
 };
 
+// Payout fields for cash payment
+const cashPaid = ref<number>(0);
+const changeAmount = computed(() => {
+	if (!selectedOrder.value) return 0;
+	const bill = selectedOrder.value.final_amount - discountAmount.value;
+	return Math.max(0, cashPaid.value - bill);
+});
+
 // Process order payment
 const submitPayment = async () => {
 	if (!selectedOrder.value) {
+		return;
+	}
+
+	const bill = selectedOrder.value.final_amount - discountAmount.value;
+	if (selectedPaymentMethod.value === "cash" && cashPaid.value < bill) {
+		alert("Jumlah yang dibayar kurang dari total tagihan!");
 		return;
 	}
 
@@ -383,6 +403,8 @@ const submitPayment = async () => {
 			body: JSON.stringify({
 				payment_method: selectedPaymentMethod.value,
 				discount: discountAmount.value,
+				cash_paid: selectedPaymentMethod.value === "cash" ? cashPaid.value : null,
+				change_amount: selectedPaymentMethod.value === "cash" ? changeAmount.value : null,
 				bank:
 					selectedPaymentMethod.value === "transfer"
 						? selectedBank.value
@@ -626,20 +648,122 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div class="w-full md:w-48">
-                    <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1.5">Status Pesanan</label>
+                <div class="w-full md:w-40">
+                    <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1.5">Tanggal Pesanan</label>
                     <select 
-                        v-model="statusFilter" 
+                        v-model="dateFilter" 
                         class="w-full h-10 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-800 dark:bg-slate-900"
                         @change="handleFilter"
                     >
-                        <option value="">Semua Status</option>
-                        <option value="pending">Menunggu Konfirmasi</option>
-                        <option value="processing">Dimasak</option>
-                        <option value="ready">Siap Saji</option>
-                        <option value="served">Selesai / Disajikan</option>
-                        <option value="cancelled">Batal</option>
+                        <option value="today">Hari Ini</option>
+                        <option value="all">Semua Hari</option>
                     </select>
+                </div>
+
+                <div class="w-full md:w-56">
+                    <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1.5">Status Pesanan</label>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <Button variant="outline" class="w-full h-10 justify-between font-normal bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+                                <span class="truncate text-slate-700 dark:text-slate-300">
+                                    {{ statusFilter.length === 0 ? 'Semua Status' : statusFilter.length + ' Status Dipilih' }}
+                                </span>
+                                <ChevronRight class="h-4 w-4 opacity-50 rotate-90" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent class="w-56" align="start">
+                            <DropdownMenuItem
+                                @select.prevent="() => { 
+                                    if (statusFilter.includes('pending')) statusFilter = statusFilter.filter(v => v !== 'pending'); 
+                                    else statusFilter.push('pending'); 
+                                    handleFilter(); 
+                                }"
+                                class="flex items-center gap-3 cursor-pointer py-2 px-3 focus:bg-slate-100 dark:focus:bg-slate-800 rounded-md"
+                            >
+                                <div :class="[
+                                    'h-4 w-4 rounded border flex items-center justify-center transition-all',
+                                    statusFilter.includes('pending') 
+                                        ? 'border-brand-600 bg-brand-600 text-white dark:border-brand-500 dark:bg-brand-500' 
+                                        : 'border-slate-300 dark:border-slate-700 bg-transparent'
+                                ]">
+                                    <Check v-if="statusFilter.includes('pending')" class="h-3 w-3 stroke-[3]" />
+                                </div>
+                                Menunggu Konfirmasi
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                @select.prevent="() => { 
+                                    if (statusFilter.includes('processing')) statusFilter = statusFilter.filter(v => v !== 'processing'); 
+                                    else statusFilter.push('processing'); 
+                                    handleFilter(); 
+                                }"
+                                class="flex items-center gap-3 cursor-pointer py-2 px-3 focus:bg-slate-100 dark:focus:bg-slate-800 rounded-md"
+                            >
+                                <div :class="[
+                                    'h-4 w-4 rounded border flex items-center justify-center transition-all',
+                                    statusFilter.includes('processing') 
+                                        ? 'border-brand-600 bg-brand-600 text-white dark:border-brand-500 dark:bg-brand-500' 
+                                        : 'border-slate-300 dark:border-slate-700 bg-transparent'
+                                ]">
+                                    <Check v-if="statusFilter.includes('processing')" class="h-3 w-3 stroke-[3]" />
+                                </div>
+                                Dimasak
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                @select.prevent="() => { 
+                                    if (statusFilter.includes('ready')) statusFilter = statusFilter.filter(v => v !== 'ready'); 
+                                    else statusFilter.push('ready'); 
+                                    handleFilter(); 
+                                }"
+                                class="flex items-center gap-3 cursor-pointer py-2 px-3 focus:bg-slate-100 dark:focus:bg-slate-800 rounded-md"
+                            >
+                                <div :class="[
+                                    'h-4 w-4 rounded border flex items-center justify-center transition-all',
+                                    statusFilter.includes('ready') 
+                                        ? 'border-brand-600 bg-brand-600 text-white dark:border-brand-500 dark:bg-brand-500' 
+                                        : 'border-slate-300 dark:border-slate-700 bg-transparent'
+                                ]">
+                                    <Check v-if="statusFilter.includes('ready')" class="h-3 w-3 stroke-[3]" />
+                                </div>
+                                Siap Saji
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                @select.prevent="() => { 
+                                    if (statusFilter.includes('served')) statusFilter = statusFilter.filter(v => v !== 'served'); 
+                                    else statusFilter.push('served'); 
+                                    handleFilter(); 
+                                }"
+                                class="flex items-center gap-3 cursor-pointer py-2 px-3 focus:bg-slate-100 dark:focus:bg-slate-800 rounded-md"
+                            >
+                                <div :class="[
+                                    'h-4 w-4 rounded border flex items-center justify-center transition-all',
+                                    statusFilter.includes('served') 
+                                        ? 'border-brand-600 bg-brand-600 text-white dark:border-brand-500 dark:bg-brand-500' 
+                                        : 'border-slate-300 dark:border-slate-700 bg-transparent'
+                                ]">
+                                    <Check v-if="statusFilter.includes('served')" class="h-3 w-3 stroke-[3]" />
+                                </div>
+                                Selesai / Disajikan
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                @select.prevent="() => { 
+                                    if (statusFilter.includes('cancelled')) statusFilter = statusFilter.filter(v => v !== 'cancelled'); 
+                                    else statusFilter.push('cancelled'); 
+                                    handleFilter(); 
+                                }"
+                                class="flex items-center gap-3 cursor-pointer py-2 px-3 focus:bg-slate-100 dark:focus:bg-slate-800 rounded-md"
+                            >
+                                <div :class="[
+                                    'h-4 w-4 rounded border flex items-center justify-center transition-all',
+                                    statusFilter.includes('cancelled') 
+                                        ? 'border-brand-600 bg-brand-600 text-white dark:border-brand-500 dark:bg-brand-500' 
+                                        : 'border-slate-300 dark:border-slate-700 bg-transparent'
+                                ]">
+                                    <Check v-if="statusFilter.includes('cancelled')" class="h-3 w-3 stroke-[3]" />
+                                </div>
+                                Batal
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 <div class="w-full md:w-48">
@@ -664,224 +788,147 @@ onMounted(() => {
                     </Button>
                 </div>
             </CardContent>
-        </Card>
+        </Card>        <!-- ORDERS GRID VIEW -->
+        <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Loading Skeleton Grid -->
+            <Card v-for="n in 8" :key="'skeleton-' + n" class="animate-pulse border-slate-100 dark:border-slate-800 shadow-sm">
+                <CardContent class="p-5 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="h-6 bg-slate-200 dark:bg-slate-800 rounded w-24"></div>
+                        <div class="h-5 bg-slate-200 dark:bg-slate-800 rounded-full w-16"></div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
+                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4"></div>
+                    </div>
+                    <div class="h-10 bg-slate-200 dark:bg-slate-800 rounded-lg w-full pt-4"></div>
+                </CardContent>
+            </Card>
+        </div>
 
-        <!-- ORDERS LIST TABLE -->
-        <Card class="border-slate-100 shadow-sm dark:border-slate-800">
-            <CardContent class="p-0">
-                <div class="overflow-x-auto w-full">
-                    <table class="w-full text-left border-collapse min-w-[800px]">
-                        <thead>
-                            <tr class="border-b border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">
-                                <th v-if="visibleColumns.order_number" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300">No. Pesanan</th>
-                                <th v-if="visibleColumns.created_at" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Waktu Buat</th>
-                                <th v-if="visibleColumns.order_type" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Tipe / Lokasi</th>
-                                <th v-if="visibleColumns.items" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300">Item Hidangan</th>
-                                <th v-if="visibleColumns.total_amount" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-right">Subtotal (Gross)</th>
-                                <th v-if="visibleColumns.discount_amount" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-right">Diskon</th>
-                                <th v-if="visibleColumns.tax_amount" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-right">Pajak</th>
-                                <th v-if="visibleColumns.final_amount" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-right">Total Net</th>
-                                <th v-if="visibleColumns.payment_method" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-center">Metode</th>
-                                <th v-if="visibleColumns.status" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-center">Status</th>
-                                <th v-if="visibleColumns.payment_status" class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-center">Bayar</th>
-                                <th class="px-6 py-4 font-semibold text-sm text-slate-600 dark:text-slate-300 text-right">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                            <!-- Premium Skeleton Loading State -->
-                            <template v-if="loading">
-                                <tr v-for="n in 5" :key="'skeleton-' + n" class="animate-pulse">
-                                    <td v-if="visibleColumns.order_number" class="px-6 py-4">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.created_at" class="px-6 py-4">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-32"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.items" class="px-6 py-4">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-48"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.order_type" class="px-6 py-4 text-center">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16 mx-auto"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.table_id" class="px-6 py-4 text-center">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-12 mx-auto"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.customer_id" class="px-6 py-4">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-20"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.waiter_id" class="px-6 py-4">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-20"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.total_amount" class="px-6 py-4 text-right">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-20 ml-auto"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.discount_amount" class="px-6 py-4 text-right">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16 ml-auto"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.tax_amount" class="px-6 py-4 text-right">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16 ml-auto"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.final_amount" class="px-6 py-4 text-right">
-                                        <div class="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24 ml-auto"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.payment_method" class="px-6 py-4 text-center">
-                                        <div class="h-5 bg-slate-200 dark:bg-slate-800 rounded-full w-14 mx-auto"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.status" class="px-6 py-4 text-center">
-                                        <div class="h-5 bg-slate-200 dark:bg-slate-800 rounded-full w-16 mx-auto"></div>
-                                    </td>
-                                    <td v-if="visibleColumns.payment_status" class="px-6 py-4 text-center">
-                                        <div class="h-5 bg-slate-200 dark:bg-slate-800 rounded-full w-16 mx-auto"></div>
-                                    </td>
-                                    <td class="px-6 py-4 text-right">
-                                        <div class="h-8 bg-slate-200 dark:bg-slate-800 rounded-lg w-20 ml-auto"></div>
-                                    </td>
-                                </tr>
-                            </template>
+        <div v-else-if="orders.length === 0" class="card border border-slate-100 bg-white p-12 text-center text-slate-400 dark:border-slate-800 dark:bg-slate-900 rounded-xl shadow-xs">
+            Belum ada pesanan yang sesuai dengan filter atau kata kunci pencarian.
+        </div>
 
-                            <!-- Empty State -->
-                            <tr v-else-if="orders.length === 0">
-                                <td :colspan="activeColumnsCount" class="text-center py-12 text-slate-400">
-                                    Belum ada pesanan yang sesuai dengan filter atau kata kunci pencarian.
-                                </td>
-                            </tr>
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Order Card Grid Item -->
+            <Card 
+                v-for="order in orders" 
+                :key="order.id"
+                class="border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all duration-200 bg-white dark:bg-slate-900 flex flex-col justify-between"
+            >
+                <CardContent class="p-5 flex flex-col gap-4 flex-1">
+                    <!-- Card Header / Title (Meja Nomor / Nama) -->
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <h3 class="font-extrabold text-slate-900 dark:text-slate-100 text-lg tracking-tight">
+                                {{ order.table?.name || "Take Away" }}
+                            </h3>
+                            <p class="text-xs font-mono text-slate-500 mt-0.5">{{ order.order_number }}</p>
+                        </div>
+                        <span 
+                            v-if="statusBadgeMap[order.status]"
+                            :class="['inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0', statusBadgeMap[order.status].color]"
+                        >
+                            {{ statusBadgeMap[order.status].label }}
+                        </span>
+                    </div>
 
-                            <!-- Rows -->
-                            <tr 
-                                v-else 
-                                v-for="order in orders" 
-                                :key="order.id"
-                                class="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition-colors"
+                    <!-- Order Info Footer -->
+                    <div class="space-y-1.5 text-xs text-slate-500">
+                        <div class="flex justify-between">
+                            <span>Waktu:</span>
+                            <span class="font-mono">{{ formatDate(order.created_at) }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Bayar:</span>
+                            <span 
+                                v-if="paymentBadgeMap[order.payment_status]"
+                                :class="['inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold', paymentBadgeMap[order.payment_status].color]"
                             >
-                                <td v-if="visibleColumns.order_number" class="px-6 py-4 font-bold text-slate-800 dark:text-slate-200">
-                                    {{ order.order_number }}
-                                </td>
-                                <td v-if="visibleColumns.created_at" class="px-6 py-4 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                    {{ formatDate(order.created_at) }}
-                                </td>
-                                <td v-if="visibleColumns.order_type" class="px-6 py-4 text-sm">
-                                    <span class="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
-                                        <span v-if="order.order_type === 'dine_in'" class="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
-                                            Dine In : {{ order.table?.name || 'Meja ' + order.table_id }}
-                                        </span>
-                                        <span v-else class="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                            Take Away
-                                        </span>
-                                    </span>
-                                </td>
-                                <td v-if="visibleColumns.items" class="px-6 py-4 text-sm max-w-[250px] truncate text-slate-600 dark:text-slate-400">
-                                    <span v-for="(item, idx) in order.items" :key="item.id">
-                                        {{ item.qty }}x {{ item.name }}{{ idx !== order.items.length - 1 ? ', ' : '' }}
-                                    </span>
-                                </td>
-                                <td v-if="visibleColumns.total_amount" class="px-6 py-4 text-right font-medium text-slate-600 dark:text-slate-400">
-                                    {{ formatRupiah(order.total_amount) }}
-                                </td>
-                                <td v-if="visibleColumns.discount_amount" class="px-6 py-4 text-right font-medium text-rose-600">
-                                    {{ order.discount_amount ? `-${formatRupiah(order.discount_amount)}` : '—' }}
-                                </td>
-                                <td v-if="visibleColumns.tax_amount" class="px-6 py-4 text-right font-medium text-slate-600 dark:text-slate-400">
-                                    {{ formatRupiah(order.tax_amount) }}
-                                </td>
-                                <td v-if="visibleColumns.final_amount" class="px-6 py-4 text-right font-semibold text-slate-900 dark:text-slate-100">
-                                    {{ formatRupiah(order.final_amount) }}
-                                </td>
-                                <td v-if="visibleColumns.payment_method" class="px-6 py-4 text-center font-medium text-sm text-slate-700 dark:text-slate-300 capitalize">
-                                    {{ order.payment_method || '—' }}
-                                </td>
-                                <td v-if="visibleColumns.status" class="px-6 py-4 text-center">
-                                    <span 
-                                        v-if="statusBadgeMap[order.status]"
-                                        :class="['inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border', statusBadgeMap[order.status].color]"
-                                    >
-                                        <component :is="statusBadgeMap[order.status].icon" class="h-3.5 w-3.5" />
-                                        {{ statusBadgeMap[order.status].label }}
-                                    </span>
-                                </td>
-                                <td v-if="visibleColumns.payment_status" class="px-6 py-4 text-center">
-                                    <span 
-                                        v-if="paymentBadgeMap[order.payment_status]"
-                                        :class="['inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold', paymentBadgeMap[order.payment_status].color]"
-                                    >
-                                        {{ paymentBadgeMap[order.payment_status].label }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 text-right whitespace-nowrap">
-                                    <div class="flex items-center justify-end gap-2">
-                                        <Button @click="viewOrder(order)" size="sm" variant="outline" class="flex items-center gap-1.5 h-8">
-                                            <Eye class="h-3.5 w-3.5" />
-                                            Detail
-                                        </Button>
-                                        <Button 
-                                            v-if="order.payment_status === 'unpaid' && order.status !== 'cancelled'" 
-                                            @click="openPaymentModal(order)" 
-                                            size="sm" 
-                                            class="bg-brand-600 hover:bg-brand-700 text-white flex items-center gap-1.5 h-8"
-                                        >
-                                            <CreditCard class="h-3.5 w-3.5" />
-                                            Bayar
-                                        </Button>
-                                        <Button @click="printReceipt(order)" size="sm" variant="ghost" class="h-8 text-slate-500 hover:text-brand-600">
-                                            <Printer class="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- 📋 PAGINATION FOOTER -->
-                <div v-if="pagination.total > 0" class="flex items-center justify-between border-t border-slate-100 p-4 dark:border-slate-800">
-                    <span class="text-xs text-slate-500 dark:text-slate-400">
-                        Menampilkan <span class="font-bold">{{ pagination.from }}</span> sampai <span class="font-bold">{{ pagination.to }}</span> dari <span class="font-bold">{{ pagination.total }}</span> pesanan
-                    </span>
-
-                    <div class="flex items-center gap-1.5">
-                        <Button 
-                            variant="outline" 
-                            size="icon-sm" 
-                            :disabled="pagination.current_page === 1 || loading"
-                            @click="changePage(1)"
-                            title="Halaman Pertama"
-                        >
-                            <ChevronsLeft class="h-4 w-4" />
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            size="icon-sm" 
-                            :disabled="pagination.current_page === 1 || loading"
-                            @click="changePage(pagination.current_page - 1)"
-                            title="Halaman Sebelumnya"
-                        >
-                            <ChevronLeft class="h-4 w-4" />
-                        </Button>
-
-                        <div class="flex items-center gap-1 px-2">
-                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                Halaman {{ pagination.current_page }} / {{ pagination.last_page }}
+                                {{ paymentBadgeMap[order.payment_status].label }}
                             </span>
                         </div>
-
-                        <Button 
-                            variant="outline" 
-                            size="icon-sm" 
-                            :disabled="pagination.current_page === pagination.last_page || loading"
-                            @click="changePage(pagination.current_page + 1)"
-                            title="Halaman Selanjutnya"
-                        >
-                            <ChevronRight class="h-4 w-4" />
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            size="icon-sm" 
-                            :disabled="pagination.current_page === pagination.last_page || loading"
-                            @click="changePage(pagination.last_page)"
-                            title="Halaman Terakhir"
-                        >
-                            <ChevronsRight class="h-4 w-4" />
-                        </Button>
+                        <div class="flex justify-between items-center pt-1 font-bold text-slate-900 dark:text-slate-100 border-t border-slate-50 dark:border-slate-800/30">
+                            <span class="text-sm">Total Net:</span>
+                            <span class="text-sm font-mono text-brand-600 dark:text-brand-400">{{ formatRupiah(order.final_amount) }}</span>
+                        </div>
                     </div>
+                </CardContent>
+
+                <!-- Actions Bar -->
+                <div class="border-t border-slate-50 dark:border-slate-800/80 p-3 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between gap-2 rounded-b-xl">
+                    <Button @click="viewOrder(order)" size="sm" variant="outline" class="flex-1 flex items-center justify-center gap-1.5 h-8 text-xs cursor-pointer">
+                        <Eye class="h-3.5 w-3.5" />
+                        Detail
+                    </Button>
+                    <Button 
+                        v-if="order.payment_status === 'unpaid' && order.status !== 'cancelled'" 
+                        @click="openPaymentModal(order)" 
+                        size="sm" 
+                        class="flex-1 bg-brand-600 hover:bg-brand-700 text-white flex items-center justify-center gap-1.5 h-8 text-xs cursor-pointer"
+                    >
+                        <CreditCard class="h-3.5 w-3.5" />
+                        Bayar
+                    </Button>
+                    <Button @click="printReceipt(order)" size="sm" variant="ghost" class="h-8 w-8 p-0 text-slate-500 hover:text-brand-600 shrink-0 cursor-pointer" title="Cetak Struk">
+                        <Printer class="h-4 w-4" />
+                    </Button>
+                </div>
+            </Card>
+        </div>
+
+        <!-- 📋 PAGINATION FOOTER -->
+        <Card v-if="pagination.total > 0" class="border-slate-100 shadow-sm dark:border-slate-800 mt-2">
+            <CardContent class="p-4 flex items-center justify-between">
+                <span class="text-xs text-slate-500 dark:text-slate-400">
+                    Menampilkan <span class="font-bold">{{ pagination.from }}</span> sampai <span class="font-bold">{{ pagination.to }}</span> dari <span class="font-bold">{{ pagination.total }}</span> pesanan
+                </span>
+
+                <div class="flex items-center gap-1.5">
+                    <Button 
+                        variant="outline" 
+                        size="icon-sm" 
+                        :disabled="pagination.current_page === 1 || loading"
+                        @click="changePage(1)"
+                        title="Halaman Pertama"
+                    >
+                        <ChevronsLeft class="h-4 w-4" />
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="icon-sm" 
+                        :disabled="pagination.current_page === 1 || loading"
+                        @click="changePage(pagination.current_page - 1)"
+                        title="Halaman Sebelumnya"
+                    >
+                        <ChevronLeft class="h-4 w-4" />
+                    </Button>
+
+                    <div class="flex items-center gap-1 px-2">
+                        <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            Halaman {{ pagination.current_page }} / {{ pagination.last_page }}
+                        </span>
+                    </div>
+
+                    <Button 
+                        variant="outline" 
+                        size="icon-sm" 
+                        :disabled="pagination.current_page === pagination.last_page || loading"
+                        @click="changePage(pagination.current_page + 1)"
+                        title="Halaman Selanjutnya"
+                    >
+                        <ChevronRight class="h-4 w-4" />
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="icon-sm" 
+                        :disabled="pagination.current_page === pagination.last_page || loading"
+                        @click="changePage(pagination.last_page)"
+                        title="Halaman Terakhir"
+                    >
+                        <ChevronsRight class="h-4 w-4" />
+                    </Button>
                 </div>
             </CardContent>
         </Card>
@@ -1014,17 +1061,6 @@ onMounted(() => {
                         </span>
                     </div>
 
-                    <!-- Diskon Input -->
-                    <div>
-                        <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-1.5">Diskon Tambahan (Rp)</label>
-                        <Input 
-                            v-model.number="discountAmount" 
-                            type="number" 
-                            placeholder="0"
-                            class="h-10 border-slate-200 focus-visible:ring-brand-500"
-                        />
-                    </div>
-
                     <!-- Pilihan Metode Pembayaran -->
                     <div>
                         <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Metode Pembayaran</label>
@@ -1039,7 +1075,7 @@ onMounted(() => {
                                         : 'border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-600 dark:border-slate-800'
                                 ]"
                             >
-                                <span class="text-lg">💵</span>
+                                <Banknote class="h-5 w-5 text-slate-500" :class="{'text-brand-700 dark:text-brand-400': selectedPaymentMethod === 'cash'}" />
                                 Cash / Tunai
                             </button>
                             <button 
@@ -1052,7 +1088,7 @@ onMounted(() => {
                                         : 'border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-600 dark:border-slate-800'
                                 ]"
                             >
-                                <span class="text-lg">📱</span>
+                                <QrCode class="h-5 w-5 text-slate-500" :class="{'text-brand-700 dark:text-brand-400': selectedPaymentMethod === 'qris'}" />
                                 QRIS
                             </button>
                             <button 
@@ -1065,7 +1101,7 @@ onMounted(() => {
                                         : 'border-slate-200 hover:bg-slate-50 hover:border-slate-300 text-slate-600 dark:border-slate-800'
                                 ]"
                             >
-                                <span class="text-lg">🏦</span>
+                                <Building2 class="h-5 w-5 text-slate-500" :class="{'text-brand-700 dark:text-brand-400': selectedPaymentMethod === 'transfer'}" />
                                 Bank Transfer
                             </button>
                         </div>
@@ -1078,6 +1114,60 @@ onMounted(() => {
                                     <span>{{ b.name }}</span>
                                     <span v-if="selectedBank === b.id" class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
                                 </button>
+                            </div>
+                        </div>
+
+                        <!-- Cash Input & Change calculation for Cash Method -->
+                        <div v-if="selectedPaymentMethod === 'cash'" class="mt-4 space-y-3 bg-brand-50/50 dark:bg-brand-950/10 p-4 rounded-xl border border-brand-100 dark:border-brand-900/50 animate-in slide-in-from-bottom-2 duration-300">
+                            <div>
+                                <label class="text-[10px] font-black text-brand-500 uppercase tracking-widest block mb-1.5">Uang Dibayar (Tunai)</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-2 text-slate-500 text-sm font-semibold">Rp</span>
+                                    <input 
+                                        v-model.number="cashPaid" 
+                                        type="number" 
+                                        placeholder="0"
+                                        class="pl-9 pr-3 h-10 w-full rounded-md border border-slate-200 bg-transparent text-sm focus-visible:ring-brand-500 font-bold focus:outline-none focus:ring-2 focus:ring-brand-500 dark:border-slate-800"
+                                        min="0"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <!-- Quick Cash Buttons -->
+                            <div>
+                                <label class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">Pilihan Cepat</label>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <button 
+                                        type="button" 
+                                        @click="cashPaid = Math.max(0, selectedOrder.final_amount - discountAmount)"
+                                        class="py-1 px-2.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                                    >
+                                        Uang Pas
+                                    </button>
+                                    <button 
+                                        v-for="preset in [10000, 20000, 50000, 100000]" 
+                                        :key="preset" 
+                                        v-show="preset >= (selectedOrder.final_amount - discountAmount)"
+                                        type="button"
+                                        @click="cashPaid = preset"
+                                        class="py-1 px-2.5 rounded bg-white hover:bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                                    >
+                                        {{ formatRupiah(preset) }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Kembalian -->
+                            <div class="pt-2.5 border-t border-dashed border-brand-200/50 flex justify-between items-center">
+                                <span class="text-xs font-bold text-slate-500">Kembalian</span>
+                                <span 
+                                    :class="[
+                                        'text-lg font-black transition-all duration-300',
+                                        changeAmount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'
+                                    ]"
+                                >
+                                    {{ formatRupiah(changeAmount) }}
+                                </span>
                             </div>
                         </div>
                     </div>

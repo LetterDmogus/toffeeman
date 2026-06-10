@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Database\Factories\MenuOptionValueFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class MenuOptionValue extends Model
 {
-    /** @use HasFactory<\Database\Factories\MenuOptionValueFactory> */
+    /** @use HasFactory<MenuOptionValueFactory> */
     use HasFactory;
 
     protected $guarded = [];

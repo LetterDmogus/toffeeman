@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Transaction;
+use App\Services\MidtransService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,7 +20,22 @@ class OrderController extends BaseController
         $query = Order::with(['items', 'table', 'customer']);
 
         if ($request->filled('status')) {
-            $query->where('status', $request->string('status'));
+            $status = $request->input('status');
+            if (is_string($status) && str_contains($status, ',')) {
+                $query->whereIn('status', explode(',', $status));
+            } elseif (is_array($status)) {
+                $query->whereIn('status', $status);
+            } else {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($request->filled('date')) {
+            if ($request->input('date') === 'today') {
+                $query->whereDate('created_at', now()->toDateString());
+            } else {
+                $query->whereDate('created_at', $request->input('date'));
+            }
         }
 
         if ($request->filled('payment_status')) {
@@ -63,16 +79,16 @@ class OrderController extends BaseController
         ]);
 
         return DB::transaction(function () use ($validated) {
-            $totalAmount = collect($validated['items'])->sum(fn($i) => $i['price'] * $i['qty']);
+            $totalAmount = collect($validated['items'])->sum(fn ($i) => $i['price'] * $i['qty']);
             $discount = $validated['discount'] ?? 0;
             $tax = $validated['tax'] ?? 0;
             $finalAmount = $totalAmount - $discount + $tax;
-            
+
             $isGateway = in_array($validated['payment_method'], ['qris', 'transfer']);
             $paymentStatus = $isGateway ? 'unpaid' : ($validated['payment_status'] ?? 'paid');
 
             $order = Order::create([
-                'order_number' => 'ORD-' . strtoupper(Str::random(8)),
+                'order_number' => 'ORD-'.strtoupper(Str::random(8)),
                 'customer_id' => $validated['customer_id'] ?? null,
                 'table_id' => $validated['table_id'] ?? null,
                 'order_type' => $validated['type'],
@@ -81,7 +97,7 @@ class OrderController extends BaseController
                 'tax_amount' => $tax,
                 'final_amount' => $finalAmount,
                 'payment_method' => $validated['payment_method'],
-                'status' => 'pending', 
+                'status' => 'pending',
                 'payment_status' => $paymentStatus,
             ]);
 
@@ -105,7 +121,7 @@ class OrderController extends BaseController
             $vaBank = null;
             if ($validated['payment_method'] === 'qris') {
                 try {
-                    $midtrans = app(\App\Services\MidtransService::class);
+                    $midtrans = app(MidtransService::class);
                     $charge = $midtrans->chargeQris($order->order_number, $order->final_amount);
                     $actions = $charge['actions'] ?? [];
                     foreach ($actions as $action) {
@@ -116,18 +132,18 @@ class OrderController extends BaseController
                     }
                     $order->update([
                         'payment_metadata' => [
-                            'qr_url' => $qrUrl
-                        ]
+                            'qr_url' => $qrUrl,
+                        ],
                     ]);
                 } catch (\Exception $e) {
-                    throw new \RuntimeException('Gagal memproses QRIS ke Midtrans: ' . $e->getMessage());
+                    throw new \RuntimeException('Gagal memproses QRIS ke Midtrans: '.$e->getMessage());
                 }
             } elseif ($validated['payment_method'] === 'transfer') {
                 try {
-                    $midtrans = app(\App\Services\MidtransService::class);
+                    $midtrans = app(MidtransService::class);
                     $bank = request()->input('bank', 'bca');
                     $charge = $midtrans->chargeBankTransfer($order->order_number, $order->final_amount, $bank);
-                    
+
                     $vaNumber = null;
                     $vaBank = null;
                     $billKey = null;
@@ -142,7 +158,7 @@ class OrderController extends BaseController
                     } elseif (isset($charge['bill_key']) && isset($charge['biller_code'])) {
                         $billKey = $charge['bill_key'];
                         $billerCode = $charge['biller_code'];
-                        $vaNumber = $charge['biller_code'] . ' - ' . $charge['bill_key'];
+                        $vaNumber = $charge['biller_code'].' - '.$charge['bill_key'];
                         $vaBank = 'mandiri';
                     } else {
                         $vaBank = $bank;
@@ -155,15 +171,15 @@ class OrderController extends BaseController
                             'requested_bank' => $bank,
                             'bill_key' => $billKey,
                             'biller_code' => $billerCode,
-                        ]
+                        ],
                     ]);
                 } catch (\Exception $e) {
-                    throw new \RuntimeException('Gagal memproses Bank Transfer ke Midtrans: ' . $e->getMessage());
+                    throw new \RuntimeException('Gagal memproses Bank Transfer ke Midtrans: '.$e->getMessage());
                 }
             }
 
             // Only create Ledger Transaction if paid
-            if ($paymentStatus === 'paid' && !$isGateway) {
+            if ($paymentStatus === 'paid' && ! $isGateway) {
                 $this->createLedgerEntry($order);
             }
 
@@ -226,7 +242,7 @@ class OrderController extends BaseController
             }
 
             $this->recalculateTotals($order);
-            
+
             // Set status back to pending to notify kitchen of new items
             $order->update(['status' => 'pending']);
 
@@ -242,6 +258,8 @@ class OrderController extends BaseController
         $validated = $request->validate([
             'payment_method' => ['required', 'in:cash,qris,transfer'],
             'discount' => ['nullable', 'numeric', 'min:0'],
+            'cash_paid' => ['nullable', 'numeric', 'min:0'],
+            'change_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         if ($order->payment_status === 'paid') {
@@ -265,12 +283,12 @@ class OrderController extends BaseController
                         'payment_status' => 'pending',
                         'payment_method' => 'qris',
                         'qr_url' => $metadata['qr_url'],
-                        'order' => $order->load('items')
+                        'order' => $order->load('items'),
                     ]);
                 }
 
                 try {
-                    $midtrans = app(\App\Services\MidtransService::class);
+                    $midtrans = app(MidtransService::class);
                     $charge = $midtrans->chargeQris($order->order_number, $order->final_amount);
                     $actions = $charge['actions'] ?? [];
                     $qrUrl = null;
@@ -282,18 +300,18 @@ class OrderController extends BaseController
                     }
 
                     $order->update([
-                        'payment_metadata' => array_merge($metadata, ['qr_url' => $qrUrl])
+                        'payment_metadata' => array_merge($metadata, ['qr_url' => $qrUrl]),
                     ]);
 
                     return response()->json([
                         'payment_status' => 'pending',
                         'payment_method' => 'qris',
                         'qr_url' => $qrUrl,
-                        'order' => $order->load('items')
+                        'order' => $order->load('items'),
                     ]);
                 } catch (\Exception $e) {
                     return response()->json([
-                        'message' => 'Gagal memproses pembayaran QRIS ke Midtrans: ' . $e->getMessage()
+                        'message' => 'Gagal memproses pembayaran QRIS ke Midtrans: '.$e->getMessage(),
                     ], 500);
                 }
             });
@@ -320,15 +338,15 @@ class OrderController extends BaseController
                         'requested_bank' => $metadata['requested_bank'] ?? null,
                         'bill_key' => $metadata['bill_key'] ?? null,
                         'biller_code' => $metadata['biller_code'] ?? null,
-                        'order' => $order->load('items')
+                        'order' => $order->load('items'),
                     ]);
                 }
 
                 try {
-                    $midtrans = app(\App\Services\MidtransService::class);
+                    $midtrans = app(MidtransService::class);
                     $bank = request()->input('bank', 'bca');
                     $charge = $midtrans->chargeBankTransfer($order->order_number, $order->final_amount, $bank);
-                    
+
                     $vaNumber = null;
                     $vaBank = null;
                     $billKey = null;
@@ -343,7 +361,7 @@ class OrderController extends BaseController
                     } elseif (isset($charge['bill_key']) && isset($charge['biller_code'])) {
                         $billKey = $charge['bill_key'];
                         $billerCode = $charge['biller_code'];
-                        $vaNumber = $charge['biller_code'] . ' - ' . $charge['bill_key'];
+                        $vaNumber = $charge['biller_code'].' - '.$charge['bill_key'];
                         $vaBank = 'mandiri';
                     } else {
                         $vaBank = $bank;
@@ -356,7 +374,7 @@ class OrderController extends BaseController
                             'requested_bank' => $bank,
                             'bill_key' => $billKey,
                             'biller_code' => $billerCode,
-                        ])
+                        ]),
                     ]);
 
                     return response()->json([
@@ -367,22 +385,31 @@ class OrderController extends BaseController
                         'requested_bank' => $bank,
                         'bill_key' => $billKey,
                         'biller_code' => $billerCode,
-                        'order' => $order->load('items')
+                        'order' => $order->load('items'),
                     ]);
                 } catch (\Exception $e) {
                     return response()->json([
-                        'message' => 'Gagal memproses pembayaran Bank Transfer ke Midtrans: ' . $e->getMessage()
+                        'message' => 'Gagal memproses pembayaran Bank Transfer ke Midtrans: '.$e->getMessage(),
                     ], 500);
                 }
             });
         }
 
         return DB::transaction(function () use ($validated, $order) {
+            $metadata = $order->payment_metadata ?? [];
+            if ($validated['payment_method'] === 'cash') {
+                $metadata = array_merge($metadata, [
+                    'cash_paid' => $validated['cash_paid'] ?? 0,
+                    'change_amount' => $validated['change_amount'] ?? 0,
+                ]);
+            }
+
             $order->update([
                 'payment_method' => $validated['payment_method'],
                 'discount_amount' => $validated['discount'] ?? $order->discount_amount,
                 'payment_status' => 'paid',
-                'status' => $order->status === 'ready' ? 'ready' : ($order->status === 'served' ? 'served' : $order->status)
+                'payment_metadata' => $metadata,
+                'status' => $order->status === 'ready' ? 'ready' : ($order->status === 'served' ? 'served' : $order->status),
             ]);
 
             $this->recalculateTotals($order);
@@ -402,7 +429,7 @@ class OrderController extends BaseController
         }
 
         $item->update(['status' => 'cancelled']);
-        
+
         $this->recalculateTotals($item->order);
 
         return response()->json(['message' => 'Item berhasil dibatalkan', 'order' => $item->order->load('items')]);
@@ -413,22 +440,22 @@ class OrderController extends BaseController
         $activeItems = $order->items()->where('status', '!=', 'cancelled')->get();
         $totalAmount = $activeItems->sum('subtotal');
         $tax = round($totalAmount * 0.1);
-        
+
         $order->update([
             'total_amount' => $totalAmount,
             'tax_amount' => $tax,
-            'final_amount' => $totalAmount - $order->discount_amount + $tax
+            'final_amount' => $totalAmount - $order->discount_amount + $tax,
         ]);
     }
 
     private function createLedgerEntry(Order $order): void
     {
         $order->transaction()->create([
-            'transaction_number' => 'TRX-' . strtoupper(Str::random(10)),
+            'transaction_number' => 'TRX-'.strtoupper(Str::random(10)),
             'type' => 'income',
             'category' => 'order_sales',
             'amount' => $order->final_amount,
-            'description' => 'Penjualan: ' . $order->order_number,
+            'description' => 'Penjualan: '.$order->order_number,
             'payment_method' => $order->payment_method,
             'payment_status' => 'completed',
             'transaction_date' => now(),

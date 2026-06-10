@@ -17,11 +17,11 @@ return new class extends Migration
             $table->foreignId('table_id')->nullable()->constrained('tables')->nullOnDelete();
             $table->foreignId('customer_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('waiter_id')->nullable()->constrained('users')->nullOnDelete();
-            
+
             $table->string('order_type')->default('dine_in'); // dine_in, takeaway
             $table->string('status')->default('pending'); // pending, preparing, ready, served, completed, cancelled
             $table->text('notes')->nullable();
-            
+
             $table->timestamps();
             $table->softDeletes();
         });

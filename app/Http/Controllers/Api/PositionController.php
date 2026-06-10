@@ -16,7 +16,7 @@ class PositionController extends BaseController
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Position::query();
+        $query = Position::query()->with('permissions');
 
         if ($request->filled('search')) {
             $search = $request->string('search');
@@ -58,15 +58,12 @@ class PositionController extends BaseController
 
         $position = Position::create($validated);
 
-        return response()->json($position, 201);
+        return response()->json($position->load('permissions'), 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(Position $position): JsonResponse
     {
-        return response()->json($position);
+        return response()->json($position->load('permissions'));
     }
 
     /**
@@ -93,7 +90,7 @@ class PositionController extends BaseController
 
         $position->update($validated);
 
-        return response()->json($position);
+        return response()->json($position->load('permissions'));
     }
 
     /**

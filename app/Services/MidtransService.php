@@ -28,14 +28,15 @@ class MidtransService
             ],
             'qris' => [
                 'acquirer' => 'gopay', // Default for QRIS in Midtrans
-            ]
+            ],
         ];
 
         try {
             $response = CoreApi::charge($params);
+
             return json_decode(json_encode($response), true);
         } catch (\Exception $e) {
-            logger()->error('Midtrans QRIS Charge Error: ' . $e->getMessage());
+            logger()->error('Midtrans QRIS Charge Error: '.$e->getMessage());
             throw $e;
         }
     }
@@ -55,7 +56,7 @@ class MidtransService
                 'echannel' => [
                     'bill_info1' => 'Payment for order',
                     'bill_info2' => $orderNumber,
-                ]
+                ],
             ];
         } else {
             $params = [
@@ -66,15 +67,16 @@ class MidtransService
                 ],
                 'bank_transfer' => [
                     'bank' => $bank,
-                ]
+                ],
             ];
         }
 
         try {
             $response = CoreApi::charge($params);
+
             return json_decode(json_encode($response), true);
         } catch (\Exception $e) {
-            logger()->error('Midtrans Bank Transfer Charge Error: ' . $e->getMessage());
+            logger()->error('Midtrans Bank Transfer Charge Error: '.$e->getMessage());
             throw $e;
         }
     }

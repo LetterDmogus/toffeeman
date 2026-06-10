@@ -24,7 +24,7 @@ const columns: Column<any>[] = [
 	{
 		key: "position_id",
 		label: "Jabatan",
-		render: (val, row) => row.position?.name || "—",
+		render: (val, row) => row.user?.position?.name || "—",
 	},
 	{
 		key: "salary",
@@ -34,26 +34,26 @@ const columns: Column<any>[] = [
 	{ key: "status", label: "Status" },
 ];
 
-const users = ref<any[]>([]);
-const userOptions = ref<{ value: any; label: string }[]>([]);
+const positionOptions = ref<{ value: any; label: string }[]>([]);
 const crudTableRef = ref<any>(null);
 
 const fields = computed<FormField[]>(() => [
-	{
-		key: "user_id",
-		label: "Hubungkan ke User (Opsional)",
-		type: "select",
-		options: userOptions.value,
-		disableOnEdit: true,
-	},
 	{ key: "name", label: "Nama Lengkap", type: "text", required: true },
 	{ key: "email", label: "Email Staf", type: "text", required: true },
-	{ key: "phone", label: "No. Telpon", type: "text" },
+	{ key: "phone", label: "No. Telpon", type: "phone" },
+	{
+		key: "position_id",
+		label: "Jabatan",
+		type: "select",
+		required: true,
+		options: positionOptions.value,
+	},
+	{ key: "face_photo_path", label: "Foto Wajah (Absensi)", type: "image" },
 	{
 		key: "password",
 		label: "Password",
 		type: "text",
-		placeholder: "Isi jika ganti/buat password",
+		placeholder: "Isi jika ganti/buat password baru",
 	},
 	{ key: "salary", label: "Gaji Bulanan", type: "number", required: true },
 	{
@@ -72,41 +72,18 @@ const badgeMap = { active: "success", inactive: "danger" };
 
 onMounted(async () => {
 	try {
-		const res = await fetch("/api/users?all=true");
+		const res = await fetch("/api/positions?all=true");
 		if (res.ok) {
 			const data = await res.json();
-			users.value = data;
-			userOptions.value = data.map((u: any) => ({
-				value: u.id,
-				label: `${u.name} (${u.email})`,
+			positionOptions.value = data.map((p: any) => ({
+				value: p.id,
+				label: p.name,
 			}));
 		}
 	} catch (e) {
-		console.error("Gagal mengambil data user:", e);
+		console.error("Gagal mengambil data jabatan:", e);
 	}
 });
-
-watch(
-	() => crudTableRef.value?.formData?.user_id,
-	(newUserId) => {
-		if (crudTableRef.value?.dialogMode === "create") {
-			if (newUserId) {
-				const selectedUser = users.value.find(
-					(u) => u.id === Number(newUserId) || u.id === newUserId
-				);
-				if (selectedUser) {
-					crudTableRef.value.formData.name = selectedUser.name || "";
-					crudTableRef.value.formData.email = selectedUser.email || "";
-					crudTableRef.value.formData.phone = selectedUser.phone || "";
-				}
-			} else {
-				crudTableRef.value.formData.name = "";
-				crudTableRef.value.formData.email = "";
-				crudTableRef.value.formData.phone = "";
-			}
-		}
-	}
-);
 </script>
 
 <template>

@@ -36,7 +36,7 @@ class QrCodeService
     public function generatePrintableSvg(Table $table): string
     {
         $url = url("/kiosk/{$table->qr_code}");
-        $label = 'Meja ' . $table->number . ($table->name ? ' · ' . $table->name : '');
+        $label = 'Meja '.$table->number.($table->name ? ' · '.$table->name : '');
 
         $qrSvgContent = $this->generateSvg($url, size: 320);
 
@@ -79,7 +79,7 @@ SVG;
     {
         $renderer = new ImageRenderer(
             new RendererStyle($size),
-            new SvgImageBackEnd()
+            new SvgImageBackEnd
         );
 
         $writer = new Writer($renderer);

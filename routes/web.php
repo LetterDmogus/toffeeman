@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AddOnController;
+use App\Http\Controllers\Api\AttendanceController as ApiAttendanceController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\IngredientBatchController;
@@ -20,14 +21,18 @@ use App\Http\Controllers\Api\MenuItemController;
 use App\Http\Controllers\Api\MidtransWebhookController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PackageController;
+use App\Http\Controllers\Api\PayrollController as ApiPayrollController;
 use App\Http\Controllers\Api\PositionController;
 use App\Http\Controllers\Api\PromoController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\TableController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\KioskController;
+use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\ScannerController;
+use App\Http\Controllers\Settings\AppSettingController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
@@ -66,6 +71,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('kitchen', 'kitchen/Index')->name('kitchen');
     Route::inertia('orders', 'orders/Index')->name('orders');
     Route::inertia('reports', 'reports/Index')->name('reports');
+    Route::inertia('reports/orders', 'reports/Orders')->name('reports.orders');
+
+    // Payroll
+    Route::get('payroll', [PayrollController::class, 'index'])->name('payroll.index');
+    Route::get('payroll/export-list', [PayrollController::class, 'exportList'])->name('payroll.export-list');
+    Route::get('payroll/export-report', [PayrollController::class, 'exportReport'])->name('payroll.export-report');
+    Route::get('payroll/generate', [PayrollController::class, 'create'])->name('payroll.create');
+    Route::post('payroll/generate', [PayrollController::class, 'generate'])->name('payroll.generate');
+    Route::get('payroll/{payroll}', [PayrollController::class, 'show'])->name('payroll.show');
+    Route::get('payroll/{payroll}/export', [PayrollController::class, 'export'])->name('payroll.export');
+    Route::patch('payroll/{payroll}', [PayrollController::class, 'update'])->name('payroll.update');
+    Route::patch('payroll/{payroll}/approve', [PayrollController::class, 'approve'])->name('payroll.approve');
+    Route::patch('payroll/{payroll}/pay', [PayrollController::class, 'pay'])->name('payroll.pay');
+    Route::delete('payroll/{payroll}', [PayrollController::class, 'destroy'])->name('payroll.destroy');
 
     // Katalog Produk
     Route::prefix('catalog')->name('catalog.')->group(function () {
@@ -99,6 +118,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::inertia('users', 'team/Users')->name('users');
         Route::inertia('roles-permissions', 'team/RolesPermissions')->name('roles-permissions');
     });
+
+    // Pengaturan Sistem / Site Settings
+    Route::prefix('site-settings')->name('site-settings.')->group(function () {
+        Route::get('ip-location', [AppSettingController::class, 'edit'])->name('ip-location.edit');
+        Route::patch('ip-location', [AppSettingController::class, 'update'])->name('ip-location.update');
+    });
+
+    // Absensi Karyawan
+    Route::get('attendance', [AttendanceController::class, 'index'])->name('attendance.index');
+    Route::get('attendance/kiosk', [AttendanceController::class, 'kiosk'])->name('attendance.kiosk');
+    Route::post('attendance', [AttendanceController::class, 'store'])->name('attendance.store');
 
     // API routes for CRUD tables (JSON responses)
     Route::prefix('api')->name('api.')->group(function () {
@@ -162,9 +192,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('orders/{order}/pay', [OrderController::class, 'processPayment'])->name('orders.pay');
         Route::patch('order-items/{item}/cancel', [OrderController::class, 'cancelItem'])->name('orders.items.cancel');
 
+        // Attendance Management API
+        Route::get('attendances', [ApiAttendanceController::class, 'index'])->name('attendances.index');
+        Route::post('attendances', [ApiAttendanceController::class, 'store'])->name('attendances.store');
+        Route::get('attendances/{attendance}', [ApiAttendanceController::class, 'show'])->name('attendances.show');
+        Route::patch('attendances/{attendance}/verify', [ApiAttendanceController::class, 'verify'])->name('attendances.verify');
+        Route::delete('attendances/{attendance}', [ApiAttendanceController::class, 'destroy'])->name('attendances.destroy');
+        Route::put('attendances/{attendance}/restore', [ApiAttendanceController::class, 'restore'])->name('attendances.restore')->withTrashed();
+        Route::delete('attendances/{attendance}/force', [ApiAttendanceController::class, 'forceDelete'])->name('attendances.force')->withTrashed();
+
         // Reports API
         Route::get('reports/dashboard', [ReportController::class, 'dashboard'])->name('reports.dashboard');
         Route::get('reports/transactions', [ReportController::class, 'transactions'])->name('reports.transactions');
+        Route::get('reports/orders', [ReportController::class, 'ordersReport'])->name('reports.orders');
+
+        // Payroll API
+        Route::get('payrolls', [ApiPayrollController::class, 'index'])->name('payrolls.index');
+        Route::get('payrolls/report', [ApiPayrollController::class, 'report'])->name('payrolls.report');
+        Route::get('payrolls/missing-employees', [ApiPayrollController::class, 'missingEmployees'])->name('payrolls.missing');
 
         // Table QR Code
         Route::post('tables/{table}/qr/generate', [TableController::class, 'generateQr'])->name('tables.qr.generate');

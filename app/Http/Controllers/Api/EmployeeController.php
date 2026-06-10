@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class EmployeeController extends BaseController
 {
@@ -62,6 +64,7 @@ class EmployeeController extends BaseController
             'position_id' => ['nullable', 'exists:positions,id'],
             'status' => ['required', 'string', 'in:active,inactive,suspended'],
             'hired_at' => ['nullable', 'date'],
+            'face_photo_path' => ['nullable', 'string'],
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -93,11 +96,17 @@ class EmployeeController extends BaseController
                 $user->assignRole('admin'); // Default employee role or based on logic
             }
 
+            $facePhoto = null;
+            if (! empty($validated['face_photo_path'])) {
+                $facePhoto = $this->uploadImage($validated['face_photo_path']);
+            }
+
             $employee = Employee::create([
                 'user_id' => $user->id,
                 'salary' => $validated['salary'],
                 'status' => $validated['status'],
                 'hired_at' => $validated['hired_at'] ?? null,
+                'face_photo_path' => $facePhoto,
             ]);
 
             return response()->json($employee->load(['user.position']), 201);
@@ -126,6 +135,7 @@ class EmployeeController extends BaseController
             'position_id' => ['nullable', 'exists:positions,id'],
             'status' => ['sometimes', 'string', 'in:active,inactive,suspended'],
             'hired_at' => ['nullable', 'date'],
+            'face_photo_path' => ['nullable', 'string'],
         ]);
 
         return DB::transaction(function () use ($validated, $employee) {
@@ -159,6 +169,25 @@ class EmployeeController extends BaseController
             }
             if (isset($validated['hired_at'])) {
                 $employeeData['hired_at'] = $validated['hired_at'];
+            }
+            if (array_key_exists('face_photo_path', $validated)) {
+                // Get the raw value before accessor modification
+                $rawPhoto = $employee->getRawOriginal('face_photo_path');
+
+                if (empty($validated['face_photo_path'])) {
+                    if ($rawPhoto) {
+                        Storage::disk('public')->delete($rawPhoto);
+                    }
+                    $employeeData['face_photo_path'] = null;
+                } else {
+                    $newPhoto = $this->uploadImage($validated['face_photo_path']);
+                    if ($newPhoto !== $rawPhoto) {
+                        if ($rawPhoto) {
+                            Storage::disk('public')->delete($rawPhoto);
+                        }
+                        $employeeData['face_photo_path'] = $newPhoto;
+                    }
+                }
             }
 
             if (! empty($employeeData)) {
@@ -196,8 +225,54 @@ class EmployeeController extends BaseController
     public function forceDelete($id): JsonResponse
     {
         $employee = Employee::onlyTrashed()->findOrFail($id);
+
+        $rawPhoto = $employee->getRawOriginal('face_photo_path');
+        if ($rawPhoto) {
+            Storage::disk('public')->delete($rawPhoto);
+        }
+
         $employee->forceDelete();
 
         return response()->json(['message' => 'Employee permanently deleted.']);
+    }
+
+    /**
+     * Upload base64 image and return public storage path.
+     */
+    private function uploadImage(?string $base64): ?string
+    {
+        if (empty($base64)) {
+            return null;
+        }
+
+        if (str_starts_with($base64, 'http://') || str_starts_with($base64, 'https://') || str_starts_with($base64, '/storage/')) {
+            $storageUrl = Storage::url('');
+            if (! empty($storageUrl) && str_starts_with($base64, $storageUrl)) {
+                return substr($base64, strlen($storageUrl));
+            }
+            if (str_starts_with($base64, '/storage/')) {
+                return substr($base64, 9);
+            }
+
+            return $base64;
+        }
+
+        if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
+            $ext = strtolower($type[1]);
+            $data = substr($base64, strpos($base64, ',') + 1);
+            $data = base64_decode($data);
+
+            if ($data === false) {
+                return null;
+            }
+
+            $filename = Str::random(40).'.'.$ext;
+            $path = 'employees/'.$filename;
+            Storage::disk('public')->put($path, $data);
+
+            return $path;
+        }
+
+        return $base64;
     }
 }

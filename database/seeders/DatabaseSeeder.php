@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\AppSetting;
 use App\Models\Category;
 use App\Models\Employee;
 use App\Models\Ingredient;
@@ -487,5 +488,21 @@ class DatabaseSeeder extends Seeder
                 'hired_at' => now(),
             ]);
         }
+
+        $this->call([
+            OrderSampleSeeder::class,
+            TransactionSampleSeeder::class,
+        ]);
+
+        // Seed App Settings for Restaurant location & IP
+        AppSetting::firstOrCreate(
+            ['id' => 1],
+            [
+                'restaurant_ip' => '127.0.0.1',
+                'latitude' => -6.2088,
+                'longitude' => 106.8456,
+                'radius_meters' => 100,
+            ]
+        );
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Spatie\Permission\Models\Permission;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -35,11 +36,26 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        $permissions = [];
+        if ($user) {
+            // Superadmin has all permissions
+            if ($user->role === 'superadmin') {
+                $permissions = Permission::pluck('name')->toArray();
+            } else {
+                $permissions = Permission::all()
+                    ->filter(fn ($perm) => $user->hasPermissionTo($perm->name))
+                    ->pluck('name')
+                    ->toArray();
+            }
+        }
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+                'permissions' => $permissions,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
