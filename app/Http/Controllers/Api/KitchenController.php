@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\MenuItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
@@ -176,5 +177,29 @@ class KitchenController extends Controller
         $text .= implode('. ', $itemsText).'.';
 
         return response()->json(['text' => trim($text)]);
+    }
+
+    /**
+     * Get all menu items for availability toggle.
+     */
+    public function getMenuItems()
+    {
+        $items = MenuItem::with('category')->orderBy('name')->get();
+
+        return response()->json($items);
+    }
+
+    /**
+     * Toggle MenuItem availability status.
+     */
+    public function toggleMenuItemStatus(Request $request, MenuItem $menuItem)
+    {
+        $newStatus = $menuItem->status === 'available' ? 'sold_out' : 'available';
+        $menuItem->update(['status' => $newStatus]);
+
+        return response()->json([
+            'message' => 'Status ketersediaan menu berhasil diperbarui',
+            'menu_item' => $menuItem,
+        ]);
     }
 }

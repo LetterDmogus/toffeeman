@@ -156,7 +156,7 @@ const getPermissionDescription = (name: string): string => {
 
 <template>
     <div class="p-6">
-        <CRUDTable ref="crudTableRef" resource-name="Jabatan" api-url="/api/positions" :columns="columns" :form-fields="fields">
+        <CRUDTable ref="crudTableRef" resource-name="Jabatan" api-url="/api/positions" :columns="columns" :form-fields="fields" auditable-type="Position">
             <template #actions="{ row }">
                 <Button
                     size="icon-sm"

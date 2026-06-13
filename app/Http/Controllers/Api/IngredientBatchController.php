@@ -44,6 +44,7 @@ class IngredientBatchController extends BaseController
             'ingredient_id' => ['required', 'exists:ingredients,id'],
             'batch_number' => ['required', 'string', 'max:255'],
             'qty' => ['required', 'numeric', 'min:0'],
+            'price' => ['nullable', 'numeric', 'min:0'],
             'expiration_date' => ['required', 'date'],
         ]);
 
@@ -70,6 +71,7 @@ class IngredientBatchController extends BaseController
         $validated = $request->validate([
             'batch_number' => ['sometimes', 'string', 'max:255'],
             'qty' => ['sometimes', 'numeric', 'min:0'],
+            'price' => ['sometimes', 'numeric', 'min:0'],
             'expiration_date' => ['sometimes', 'date'],
         ]);
 

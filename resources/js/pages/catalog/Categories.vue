@@ -33,6 +33,6 @@ const fields: FormField[] = [
 
 <template>
     <div class="p-6">
-        <CRUDTable resource-name="Kategori" api-url="/api/categories" :columns="columns" :form-fields="fields" />
+        <CRUDTable resource-name="Kategori" api-url="/api/categories" :columns="columns" :form-fields="fields" auditable-type="Category" />
     </div>
 </template>

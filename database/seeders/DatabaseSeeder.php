@@ -502,6 +502,9 @@ class DatabaseSeeder extends Seeder
                 'latitude' => -6.2088,
                 'longitude' => 106.8456,
                 'radius_meters' => 100,
+                'website_name' => 'Toffee Manor',
+                'address' => 'Jl. M.H. Thamrin No. 1, Jakarta Pusat',
+                'contact' => '+62 812-3456-7890',
             ]
         );
     }

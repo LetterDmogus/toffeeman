@@ -33,6 +33,8 @@ class RoleAndPositionSeeder extends Seeder
             'settings-access',           // Hak akses Pengaturan Sistem (IP & Lokasi)
             'payroll-access',            // Hak akses melihat slip gaji
             'payroll-manage',            // Generate, edit, approve, pay slip gaji
+            'view-audit-logs',           // Hak akses melihat log aktivitas (audit logs)
+            'view-trash',                // Hak akses melihat dan memulihkan data di tong sampah (recycle bin)
         ];
 
         foreach ($permissions as $perm) {

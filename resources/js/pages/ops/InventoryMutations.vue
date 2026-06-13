@@ -166,6 +166,7 @@ const submitMutationForm = async (cancel: () => void, refresh: () => void) => {
 			disable-edit
 			disable-delete
 			:default-visible-columns="['date', 'reference_number', 'item_name', 'qty', 'from_status', 'to_status', 'creator', 'notes']"
+			auditable-type="InventoryOut"
 		>
 			<template #actions="{ row }">
 				<Button

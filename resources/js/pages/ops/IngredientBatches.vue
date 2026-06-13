@@ -47,6 +47,11 @@ const columns: Column<any>[] = [
 		render: (val, row) => `${val} ${row.ingredient?.unit || ""}`,
 	},
 	{
+		key: "price",
+		label: "Total Harga Beli",
+		render: (val) => val ? `Rp ${Math.round(val as number).toLocaleString("id-ID")}` : "Rp 0",
+	},
+	{
 		key: "expiration_date",
 		label: "Tanggal Kedaluwarsa",
 		render: (val) =>
@@ -69,6 +74,7 @@ const fields: FormField[] = [
 	},
 	{ key: "batch_number", label: "Nomor Batch", type: "text", required: true },
 	{ key: "qty", label: "Stok Batch", type: "number", required: true },
+	{ key: "price", label: "Total Harga Beli", type: "number", required: true },
 	{
 		key: "expiration_date",
 		label: "Tanggal Kedaluwarsa",
@@ -80,6 +86,6 @@ const fields: FormField[] = [
 
 <template>
     <div class="p-6">
-        <CRUDTable resource-name="Batch Bahan" api-url="/api/ingredient-batches" :columns="columns" :form-fields="fields" />
+        <CRUDTable resource-name="Batch Bahan" api-url="/api/ingredient-batches" :columns="columns" :form-fields="fields" auditable-type="IngredientBatch" />
     </div>
 </template>

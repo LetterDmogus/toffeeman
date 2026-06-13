@@ -47,6 +47,6 @@ const fields: FormField[] = [
 
 <template>
     <div class="p-6">
-        <CRUDTable resource-name="Add-on" api-url="/api/add-ons" :columns="columns" :form-fields="fields" />
+        <CRUDTable resource-name="Add-on" api-url="/api/add-ons" :columns="columns" :form-fields="fields" auditable-type="AddOn" />
     </div>
 </template>

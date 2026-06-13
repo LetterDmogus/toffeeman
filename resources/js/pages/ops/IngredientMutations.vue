@@ -177,6 +177,7 @@ const submitMutationForm = async (cancel: () => void, refresh: () => void) => {
 			disable-delete
 			:badge-map="badgeMap"
 			:default-visible-columns="['created_at', 'ingredient_id', 'ingredient_batch_id', 'type', 'qty', 'created_by', 'notes']"
+			auditable-type="IngredientMutation"
 		>
 			<template #form="{ mode, submitting, cancel, refresh }">
 				<div class="rounded-xl border bg-card p-6 shadow-sm animate-in fade-in duration-300">

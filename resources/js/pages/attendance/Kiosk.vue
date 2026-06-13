@@ -4,6 +4,7 @@ import { onMounted, onUnmounted, ref, computed, watch } from "vue";
 import { Camera, MapPin, RefreshCw, CheckCircle, AlertCircle, ShieldAlert, ArrowLeft, Users, UserCheck } from "lucide-vue-next";
 import { Link } from "@inertiajs/vue3";
 import { dashboard } from "@/routes";
+import { useHandTracking } from "@/composables/useHandTracking";
 
 const props = defineProps<{
 	positions: Array<{
@@ -134,6 +135,160 @@ const resetPosition = () => {
 	router.get("/attendance/kiosk");
 };
 
+// ── Hand Tracking Cursor States (MediaPipe) ──────────────────────────────────
+const {
+	handTrackingEnabled,
+	isHandModelLoading,
+	handCursorCoords,
+	showHandCursor,
+	isPinching,
+	snappedElement,
+	dwellProgress,
+	isPeaceSign,
+	toggleHandTracking,
+	calculateSnap,
+	checkPeaceSign,
+	updateDwell
+} = useHandTracking();
+
+let handLandmarker: any = null;
+let lastVideoTime = -1;
+let lastTimestamp = performance.now();
+
+const loadHandModel = async () => {
+	if (handLandmarker) return;
+	isHandModelLoading.value = true;
+	try {
+		// Import MediaPipe vision task package
+		const visionUrl = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/vision_bundle.mjs";
+		const { HandLandmarker, FilesetResolver } = await import(/* @vite-ignore */ visionUrl) as any;
+		
+		const vision = await FilesetResolver.forVisionTasks(
+			"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.8/wasm"
+		);
+		handLandmarker = await HandLandmarker.createFromOptions(vision, {
+			baseOptions: {
+				modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+				delegate: "GPU"
+			},
+			runningMode: "VIDEO",
+			numHands: 1
+		});
+	} catch (e) {
+		console.error("Gagal memuat model hand landmark:", e);
+	} finally {
+		isHandModelLoading.value = false;
+	}
+};
+
+watch(handTrackingEnabled, async (enabled) => {
+	if (enabled && cameraActive.value) {
+		await loadHandModel();
+		startHandTrackingLoop();
+	} else {
+		showHandCursor.value = false;
+	}
+});
+
+const startHandTrackingLoop = () => {
+	const runDetection = () => {
+		if (!handTrackingEnabled.value || !videoEl.value || !handLandmarker || !cameraActive.value) {
+			if (handTrackingEnabled.value) requestAnimationFrame(runDetection);
+			return;
+		}
+
+		try {
+			const video = videoEl.value;
+			const timestamp = performance.now();
+			const deltaTimeMs = timestamp - lastTimestamp;
+			lastTimestamp = timestamp;
+
+			if (video.currentTime !== lastVideoTime) {
+				lastVideoTime = video.currentTime;
+				const results = handLandmarker.detectForVideo(video, timestamp);
+				if (results && results.landmarks && results.landmarks.length > 0) {
+					showHandCursor.value = true;
+					const landmarks = results.landmarks[0];
+					
+					// Detect peace sign
+					checkPeaceSign(landmarks);
+
+					// Index finger tip (landmark 8)
+					const indexTip = landmarks[8];
+					
+					// Mirror X coordinate
+					const targetX = (1 - indexTip.x) * window.innerWidth;
+					const targetY = indexTip.y * window.innerHeight;
+
+					// Smooth mouse movements (lerp)
+					const smoothX = handCursorCoords.value.x + (targetX - handCursorCoords.value.x) * 0.3;
+					const smoothY = handCursorCoords.value.y + (targetY - handCursorCoords.value.y) * 0.3;
+
+					// Apply magnetic snap
+					const snapped = calculateSnap(smoothX, smoothY);
+					handCursorCoords.value.x = snapped.x;
+					handCursorCoords.value.y = snapped.y;
+
+					// Check dwell timing to trigger click
+					const clickTriggered = updateDwell(handCursorCoords.value.x, handCursorCoords.value.y, deltaTimeMs);
+					if (clickTriggered) {
+						simulateClick(handCursorCoords.value.x, handCursorCoords.value.y);
+					}
+				} else {
+					showHandCursor.value = false;
+					isPeaceSign.value = false;
+					dwellProgress.value = 0;
+				}
+			}
+		} catch (err) {
+			console.error("Error detecting hand landmarks:", err);
+		}
+
+		if (handTrackingEnabled.value) {
+			requestAnimationFrame(runDetection);
+		}
+	};
+	requestAnimationFrame(runDetection);
+};
+
+const simulateClick = (x: number, y: number) => {
+	// Find element under hand cursor coordinates
+	const element = document.elementFromPoint(x, y);
+	if (element) {
+		const clickEvent = new MouseEvent("click", {
+			view: window,
+			bubbles: true,
+			cancelable: true,
+			clientX: x,
+			clientY: y
+		});
+		element.dispatchEvent(clickEvent);
+		
+		// Add brief click wave visual effect
+		const ripple = document.createElement("div");
+		ripple.style.position = "absolute";
+		ripple.style.left = `${x - 12}px`;
+		ripple.style.top = `${y - 12}px`;
+		ripple.style.width = "24px";
+		ripple.style.height = "24px";
+		ripple.style.border = "4px solid #f97316";
+		ripple.style.borderRadius = "50%";
+		ripple.style.pointerEvents = "none";
+		ripple.style.transform = "scale(0.5)";
+		ripple.style.transition = "transform 0.3s ease-out, opacity 0.3s ease-out";
+		ripple.style.zIndex = "99999";
+		document.body.appendChild(ripple);
+		
+		setTimeout(() => {
+			ripple.style.transform = "scale(2)";
+			ripple.style.opacity = "0";
+		}, 10);
+		setTimeout(() => {
+			ripple.remove();
+		}, 350);
+	}
+};
+
 // Initialize Kiosk models & profiles
 onMounted(async () => {
 	if (!props.selectedPositionId) {
@@ -146,7 +301,6 @@ onMounted(async () => {
 		loadingProgress.value = "Mengunduh library face-api.js...";
 		const faceapi = await loadScript("https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js") as any;
 		
-		// Load local model weights from public folder
 		loadingProgress.value = "Memuat model deteksi wajah (20%)...";
 		await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
 		loadingProgress.value = "Memuat model titik wajah (60%)...";
@@ -165,7 +319,7 @@ onMounted(async () => {
 				loadingProgress.value = `Memproses wajah: ${emp.name}...`;
 				const img = await faceapi.fetchImage(emp.face_photo_url);
 				const detections = await faceapi
-					.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions())
+					.detectSingleFace(img, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.6 }))
 					.withFaceLandmarks()
 					.withFaceDescriptor();
 
@@ -180,7 +334,7 @@ onMounted(async () => {
 		}
 
 		if (labeledDescriptors.length > 0) {
-			faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55); // distance threshold (lower is stricter)
+			faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.45); // distance threshold (lower is stricter, 0.45 is highly accurate)
 		} else {
 			console.warn("Tidak ada data wajah karyawan yang berhasil diproses.");
 		}
@@ -214,6 +368,11 @@ const startCamera = async () => {
 			videoEl.value.onloadedmetadata = () => {
 				cameraActive.value = true;
 				startDetectionLoop();
+				if (handTrackingEnabled.value) {
+					loadHandModel().then(() => {
+						startHandTrackingLoop();
+					});
+				}
 			};
 		}
 	} catch (err) {
@@ -232,7 +391,7 @@ const startDetectionLoop = () => {
 
 		try {
 			const detection = await faceapi
-				.detectSingleFace(videoEl.value, new faceapi.TinyFaceDetectorOptions())
+				.detectSingleFace(videoEl.value, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.6 }))
 				.withFaceLandmarks()
 				.withFaceDescriptor();
 
@@ -324,14 +483,14 @@ onUnmounted(() => {
                 <button 
                     v-if="selectedPositionId" 
                     @click="resetPosition" 
-                    class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition"
+                    class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition cursor-pointer"
                 >
                     <ArrowLeft class="h-5 w-5" />
                 </button>
                 <Link 
                     v-else 
                     :href="dashboard().url" 
-                    class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition"
+                    class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition cursor-pointer"
                 >
                     <ArrowLeft class="h-5 w-5" />
                 </Link>
@@ -341,14 +500,75 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <!-- GPS Status -->
-            <div class="flex items-center gap-2 text-xs bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200 font-mono text-slate-700">
-                <MapPin class="h-3.5 w-3.5" :class="isWithinRadius ? 'text-emerald-600' : 'text-amber-600'" />
-                <span v-if="locationChecking" class="text-slate-500 animate-pulse">Menghubungkan GPS...</span>
-                <span v-else-if="isWithinRadius === true" class="text-emerald-600 font-semibold">Restoran (GPS Match)</span>
-                <span v-else class="text-amber-600 font-semibold">Luar Area (Verifikasi Manual)</span>
+            <div class="flex items-center gap-4">
+                <!-- MediaPipe Hand Tracking Control Switch -->
+                <div v-if="selectedPositionId" class="flex items-center gap-2">
+                    <button
+                        type="button"
+                        @click="toggleHandTracking"
+                        class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border transition cursor-pointer"
+                        :class="[
+                            handTrackingEnabled 
+                                ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600' 
+                                : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+                        ]"
+                    >
+                        <RefreshCw v-if="isHandModelLoading" class="h-3.5 w-3.5 animate-spin" />
+                        <span v-else class="h-2 w-2 rounded-full" :class="handTrackingEnabled ? 'bg-white animate-ping' : 'bg-slate-400'"></span>
+                        Hand Tracking: {{ handTrackingEnabled ? 'Aktif' : 'Nonaktif' }}
+                    </button>
+                </div>
+
+                <!-- GPS Status -->
+                <div class="flex items-center gap-2 text-xs bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200 font-mono text-slate-700">
+                    <MapPin class="h-3.5 w-3.5" :class="isWithinRadius ? 'text-emerald-600' : 'text-amber-600'" />
+                    <span v-if="locationChecking" class="text-slate-500 animate-pulse">Menghubungkan GPS...</span>
+                    <span v-else-if="isWithinRadius === true" class="text-emerald-600 font-semibold">Restoran (GPS Match)</span>
+                    <span v-else class="text-amber-600 font-semibold">Luar Area (Verifikasi Manual)</span>
+                </div>
             </div>
         </header>
+
+        <!-- Hand Cursor Overlay -->
+        <div 
+            v-if="handTrackingEnabled && showHandCursor"
+            class="fixed w-8 h-8 rounded-full border-2 border-white pointer-events-none transition-all duration-75 shadow-lg flex items-center justify-center"
+            :class="[
+                isPinching ? 'bg-orange-600 scale-90 border-orange-300' : 'bg-orange-500 scale-100',
+                snappedElement ? 'ring-4 ring-orange-400/50 scale-110' : ''
+            ]"
+            :style="{ 
+                left: `${handCursorCoords.x - 16}px`, 
+                top: `${handCursorCoords.y - 16}px`, 
+                zIndex: 99999,
+                boxShadow: snappedElement 
+                    ? '0 0 15px rgba(249, 115, 22, 0.8)' 
+                    : '0 0 10px rgba(249, 115, 22, 0.5)'
+            }"
+        >
+            <!-- Circular Progress for Dwell Click -->
+            <svg v-if="isPeaceSign && dwellProgress > 0" class="absolute inset-0 w-full h-full transform -rotate-90 scale-110">
+                <circle
+                    cx="16"
+                    cy="16"
+                    r="13"
+                    stroke="rgba(255,255,255,0.3)"
+                    stroke-width="1.5"
+                    fill="transparent"
+                />
+                <circle
+                    cx="16"
+                    cy="16"
+                    r="13"
+                    stroke="#ffffff"
+                    stroke-width="2.5"
+                    fill="transparent"
+                    :stroke-dasharray="2 * Math.PI * 13"
+                    :stroke-dashoffset="2 * Math.PI * 13 * (1 - dwellProgress / 1000)"
+                />
+            </svg>
+            <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+        </div>
 
         <!-- Main Screen -->
         <main class="flex-1 flex flex-col items-center justify-center p-6 gap-6">

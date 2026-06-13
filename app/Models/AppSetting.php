@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['restaurant_ip', 'latitude', 'longitude', 'radius_meters'])]
+#[Fillable(['restaurant_ip', 'latitude', 'longitude', 'radius_meters', 'website_name', 'address', 'contact'])]
 class AppSetting extends Model
 {
     /**

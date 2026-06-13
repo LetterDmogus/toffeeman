@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Concerns\HasAuditLogs;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MenuItem extends Model
 {
-    use SoftDeletes;
+    use HasAuditLogs, SoftDeletes;
 
     protected $guarded = [];
 

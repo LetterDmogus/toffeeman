@@ -122,6 +122,6 @@ const badgeMap = { active: "success", inactive: "danger" };
 
 <template>
     <div class="p-6">
-        <CRUDTable resource-name="User" api-url="/api/users" :columns="columns" :form-fields="fields" :badge-map="badgeMap" @form-opened="handleFormOpened" />
+        <CRUDTable resource-name="User" api-url="/api/users" :columns="columns" :form-fields="fields" :badge-map="badgeMap" @form-opened="handleFormOpened" auditable-type="User" />
     </div>
 </template>

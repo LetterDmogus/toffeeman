@@ -120,7 +120,7 @@ function openKiosk(row: any) {
 
 <template>
     <div class="p-6">
-        <CRUDTable resource-name="Meja" api-url="/api/tables" :columns="columns" :form-fields="fields" :badge-map="badgeMap">
+        <CRUDTable resource-name="Meja" api-url="/api/tables" :columns="columns" :form-fields="fields" :badge-map="badgeMap" auditable-type="Table">
             <template #actions="{ row }">
                 <!-- QR Code button -->
                 <button

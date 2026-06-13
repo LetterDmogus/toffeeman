@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class IngredientBatch extends Model
 {
@@ -13,6 +14,7 @@ class IngredientBatch extends Model
 
     protected $casts = [
         'qty' => 'decimal:2',
+        'price' => 'decimal:2',
         'expiration_date' => 'date',
     ];
 
@@ -67,6 +69,25 @@ class IngredientBatch extends Model
                 'notes' => 'Penambahan batch baru: '.$batch->batch_number,
                 'created_by' => $batch->created_by ?? auth()->id(),
             ]);
+
+            // Log financial transaction expense
+            $amount = (float) ($batch->price ?? 0);
+
+            if ($amount > 0) {
+                Transaction::create([
+                    'transaction_number' => 'TRX-'.strtoupper(Str::random(10)),
+                    'type' => 'expense',
+                    'category' => 'ingredient_purchase',
+                    'reference_type' => IngredientBatch::class,
+                    'reference_id' => $batch->id,
+                    'user_id' => $batch->created_by ?? auth()->id(),
+                    'amount' => $amount,
+                    'payment_method' => 'cash',
+                    'payment_status' => 'completed',
+                    'description' => 'Pembelian bahan: '.($batch->ingredient?->name ?? 'Bahan Dapur').' (Batch: '.$batch->batch_number.')',
+                    'transaction_date' => now(),
+                ]);
+            }
         });
 
         static::saved(function (IngredientBatch $batch) {
@@ -87,6 +108,11 @@ class IngredientBatch extends Model
                 'notes' => 'Hapus/buang batch: '.$batch->batch_number,
                 'created_by' => auth()->id(),
             ]);
+
+            // Delete associated transactions
+            Transaction::where('reference_type', IngredientBatch::class)
+                ->where('reference_id', $batch->id)
+                ->delete();
         });
     }
 }

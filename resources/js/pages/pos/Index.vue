@@ -1272,20 +1272,26 @@ const formatIDR = (val: number) => {
                                 v-for="item in filteredItems"
                                 :key="item.id"
                                 @click="
-                                    addToCart(
+                                    item.status === 'sold_out' ? null : addToCart(
                                         item,
                                         activeCategory === 'packages',
                                     )
                                 "
                                 @contextmenu.prevent="
-                                    openDetail(
+                                    item.status === 'sold_out' ? null : openDetail(
                                         item,
                                         activeCategory === 'packages',
                                     )
                                 "
-                                class="group relative cursor-pointer rounded-2xl border-2 border-brand-50 bg-white p-3 transition-all hover:border-brand-300 hover:shadow-xl hover:shadow-brand-100/50 active:scale-95"
+                                class="group relative rounded-2xl border-2 bg-white p-3 transition-all hover:shadow-xl hover:shadow-brand-100/50"
+                                :class="[
+                                    item.status === 'sold_out' 
+                                        ? 'border-slate-100 grayscale opacity-50 contrast-75 cursor-not-allowed select-none' 
+                                        : 'border-brand-50 cursor-pointer hover:border-brand-300 active:scale-95'
+                                ]"
                             >
                                 <button
+                                    v-if="item.status !== 'sold_out'"
                                     @click.stop="
                                         openDetail(
                                             item,
@@ -1309,6 +1315,9 @@ const formatIDR = (val: number) => {
                                         class="flex h-full w-full items-center justify-center text-brand-200"
                                     >
                                         <Utensils class="h-10 w-10" />
+                                    </div>
+                                    <div v-if="item.status === 'sold_out'" class="absolute inset-0 flex items-center justify-center bg-black/60 text-[11px] font-black uppercase text-white tracking-widest rounded-xl">
+                                        Habis
                                     </div>
                                 </div>
                                 <div class="px-1">
@@ -1337,15 +1346,20 @@ const formatIDR = (val: number) => {
                                 v-for="item in filteredItems"
                                 :key="item.id"
                                 @click="
-                                    addToCart(
+                                    item.status === 'sold_out' ? null : addToCart(
                                         item,
                                         activeCategory === 'packages',
                                     )
                                 "
-                                class="group relative flex cursor-pointer items-center gap-4 rounded-xl border-2 border-brand-50 bg-white p-4 transition-all hover:border-brand-300 active:scale-[0.99]"
+                                class="group relative flex items-center gap-4 rounded-xl border-2 bg-white p-4 transition-all"
+                                :class="[
+                                    item.status === 'sold_out' 
+                                        ? 'border-slate-100 grayscale opacity-50 contrast-75 cursor-not-allowed select-none' 
+                                        : 'border-brand-50 cursor-pointer hover:border-brand-300 active:scale-[0.99]'
+                                ]"
                             >
                                 <div
-                                    class="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-brand-50"
+                                    class="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-brand-50 relative"
                                 >
                                     <img
                                         v-if="item.image_url"
@@ -1357,6 +1371,9 @@ const formatIDR = (val: number) => {
                                         class="flex h-full w-full items-center justify-center text-brand-200"
                                     >
                                         <Utensils class="h-6 w-6" />
+                                    </div>
+                                    <div v-if="item.status === 'sold_out'" class="absolute inset-0 flex items-center justify-center bg-black/60 text-[8px] font-black uppercase text-white tracking-wider rounded-lg">
+                                        Habis
                                     </div>
                                 </div>
                                 <div class="min-w-0 flex-1">

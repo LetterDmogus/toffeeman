@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\PayrollListExport;
+use App\Exports\PayrollReportExport;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\Payroll;
@@ -13,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PayrollController extends Controller
 {
@@ -278,7 +281,7 @@ class PayrollController extends Controller
     }
 
     /**
-     * Export the list of payroll slips for a given period as CSV.
+     * Export the list of payroll slips for a given period as Excel.
      */
     public function exportList(Request $request)
     {
@@ -286,78 +289,17 @@ class PayrollController extends Controller
 
         $month = $request->integer('month', now()->month);
         $year = $request->integer('year', now()->year);
+        $status = $request->filled('status') ? $request->string('status') : null;
+        $search = $request->filled('search') ? $request->string('search') : null;
 
-        $query = Payroll::with(['employee.user.position'])
-            ->where('period_month', $month)
-            ->where('period_year', $year);
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->string('status'));
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->string('search');
-            $query->whereHas('employee.user', fn ($q) => $q->where('name', 'like', "%{$search}%"));
-        }
-
-        $payrolls = $query->latest()->get();
-
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="rekap_slip_gaji_' . $month . '_' . $year . '.csv"',
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
-            'Pragma' => 'no-cache',
-            'Expires' => '0',
-        ];
-
-        return response()->streamDownload(function () use ($payrolls) {
-            $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
-
-            fputcsv($handle, [
-                'Karyawan',
-                'Jabatan',
-                'Bulan',
-                'Tahun',
-                'Hari Kerja',
-                'Hadir',
-                'Absen',
-                'Gaji Pokok',
-                'Tunjangan',
-                'Bonus',
-                'Gaji Kotor (Gross)',
-                'Potongan Absensi',
-                'Potongan Lainnya',
-                'Gaji Bersih (Net)',
-                'Status',
-            ]);
-
-            foreach ($payrolls as $p) {
-                fputcsv($handle, [
-                    $p->employee?->name,
-                    $p->employee?->position?->name ?? '—',
-                    $p->period_month,
-                    $p->period_year,
-                    $p->working_days,
-                    $p->present_days,
-                    $p->absent_days,
-                    $p->base_salary,
-                    $p->allowance,
-                    $p->bonus,
-                    $p->gross_salary,
-                    $p->deduction_absence,
-                    $p->deduction_other,
-                    $p->net_salary,
-                    strtoupper($p->status),
-                ]);
-            }
-
-            fclose($handle);
-        }, 'rekap_slip_gaji_' . $month . '_' . $year . '.csv', $headers);
+        return Excel::download(
+            new PayrollListExport($month, $year, $status, $search),
+            "rekap_slip_gaji_{$month}_{$year}.xlsx"
+        );
     }
 
     /**
-     * Export the yearly trend report as CSV.
+     * Export the yearly trend report as Excel.
      */
     public function exportReport(Request $request)
     {
@@ -365,58 +307,10 @@ class PayrollController extends Controller
 
         $year = $request->integer('year', now()->year);
 
-        $monthlyTrend = Payroll::selectRaw('
-                period_month as month,
-                SUM(base_salary) as total_base,
-                SUM(gross_salary) as total_gross,
-                SUM(net_salary) as total_net,
-                SUM(deduction_absence + deduction_other) as total_deductions
-            ')
-            ->where('period_year', $year)
-            ->where('status', 'paid')
-            ->groupBy('period_month')
-            ->orderBy('period_month')
-            ->get()
-            ->keyBy('month');
-
-        $months = [
-            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
-            7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
-        ];
-
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="laporan_tahunan_gaji_' . $year . '.csv"',
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
-            'Pragma' => 'no-cache',
-            'Expires' => '0',
-        ];
-
-        return response()->streamDownload(function () use ($monthlyTrend, $months) {
-            $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
-
-            fputcsv($handle, [
-                'Bulan',
-                'Total Gaji Pokok',
-                'Total Gaji Kotor (Gross)',
-                'Total Potongan',
-                'Total Gaji Bersih (Net)',
-            ]);
-
-            foreach ($months as $num => $name) {
-                $data = $monthlyTrend->get($num);
-                fputcsv($handle, [
-                    $name,
-                    $data ? $data->total_base : 0,
-                    $data ? $data->total_gross : 0,
-                    $data ? $data->total_deductions : 0,
-                    $data ? $data->total_net : 0,
-                ]);
-            }
-
-            fclose($handle);
-        }, 'laporan_tahunan_gaji_' . $year . '.csv', $headers);
+        return Excel::download(
+            new PayrollReportExport($year),
+            "laporan_tahunan_gaji_{$year}.xlsx"
+        );
     }
     // ── Private helpers ──────────────────────────────────────────────────────
 

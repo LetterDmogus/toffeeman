@@ -369,6 +369,7 @@ const menuItemBadge = {
                 :columns="menuItemColumns"
                 :form-fields="menuItemFields"
                 :badge-map="menuItemBadge"
+                auditable-type="MenuItem"
             >
                 <template #actions="{ row }">
                     <div class="flex items-center gap-1">

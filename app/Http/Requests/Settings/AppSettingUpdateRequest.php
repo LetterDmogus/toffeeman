@@ -12,10 +12,9 @@ class AppSettingUpdateRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        // Only allow manager or superadmin to update restaurant settings
         $user = $this->user();
 
-        return $user && ($user->hasRole('superadmin') || $user->hasRole('manager') || $user->hasRole('admin'));
+        return $user && ($user->role === 'superadmin' || $user->hasPermissionTo('settings-access'));
     }
 
     /**
@@ -30,6 +29,9 @@ class AppSettingUpdateRequest extends FormRequest
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'radius_meters' => ['required', 'integer', 'min:5'],
+            'website_name' => ['required', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:1000'],
+            'contact' => ['nullable', 'string', 'max:50'],
         ];
     }
 }

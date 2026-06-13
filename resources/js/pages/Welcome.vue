@@ -15,22 +15,27 @@ import { dashboard, login, register } from "@/routes";
 
     <div class="min-h-screen bg-[#faf8f5] text-amber-950 eb-garamond selection:bg-amber-200 selection:text-amber-950 eb-garamond">
         <!-- ─── HEADER NAVBAR ─── -->
-        <header class="px-6 py-6">
-            <nav class="flex items-center gap-6">
-                <!-- Check if logged in or guest -->
-                <Link v-if="$page.props.auth.user" :href="dashboard()" class="group flex items-center gap-1 text-sm font-bold font-sans text-amber-900 hover:text-amber-700 transition">
-                    <span>Dashboard</span>
-                    <ChevronRight class="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+        <header class="max-w-6xl mx-auto px-6 py-6">
+            <nav class="flex items-center justify-between">
+                <Link href="/" class="text-xl font-bold tracking-tight text-amber-950 font-sans">
+                    Toffeeman
                 </Link>
-                <template v-else>
-                    <Link :href="login()" class="text-sm font-bold font-sans text-slate-600 hover:text-slate-900 transition">
-                        Login
+                <div class="flex items-center gap-6">
+                    <!-- Check if logged in or guest -->
+                    <Link v-if="$page.props.auth.user" :href="dashboard()" class="group flex items-center gap-1 text-sm font-bold font-sans text-amber-900 hover:text-amber-700 transition">
+                        <span>Dashboard</span>
+                        <ChevronRight class="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </Link>
-                    <Link :href="register()" class="group flex items-center gap-1 bg-amber-900 text-[#faf8f5] text-xs font-bold font-sans px-4 py-2 rounded-lg hover:bg-amber-800 transition">
-                        <span>Daftar Sekarang</span>
-                        <ChevronRight class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                    </Link>
-                </template>
+                    <template v-else>
+                        <Link :href="login()" class="text-sm font-bold font-sans text-slate-600 hover:text-slate-900 transition">
+                            Login
+                        </Link>
+                        <Link :href="register()" class="group flex items-center gap-1 bg-amber-900 text-[#faf8f5] text-xs font-bold font-sans px-4 py-2 rounded-lg hover:bg-amber-800 transition">
+                            <span>Daftar Sekarang</span>
+                            <ChevronRight class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </Link>
+                    </template>
+                </div>
             </nav>
         </header>
 

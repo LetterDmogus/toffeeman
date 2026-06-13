@@ -16,8 +16,10 @@ import {
 	Trash,
 	Trash2,
 	X,
+	History,
 } from "lucide-vue-next";
 import { computed, ref, watch } from "vue";
+import { usePage } from "@inertiajs/vue3";
 import ImageUploader from "@/components/ImageUploader.vue";
 import SearchableSelect from "@/components/ui/select/SearchableSelect.vue";
 import { Badge } from "@/components/ui/badge";
@@ -103,6 +105,7 @@ const props = withDefaults(
 		defaultVisibleColumns?: string[];
 		disableEdit?: boolean;
 		disableDelete?: boolean;
+		auditableType?: string;
 	}>(),
 	{
 		idKey: "id",
@@ -385,6 +388,15 @@ function openEdit(row: T) {
 	emit("formOpened", { mode: "edit", row });
 }
 
+// ─── Authorization ────────────────────────────────────────────────────────────
+const pageInstance = usePage();
+const hasPermission = (permission: string) => {
+	const permissions = (pageInstance.props.auth as any)?.permissions ?? [];
+	return permissions.includes(permission);
+};
+const canViewAuditLogs = computed(() => hasPermission("view-audit-logs"));
+const canViewTrash = computed(() => hasPermission("view-trash"));
+
 function cancelForm() {
 	viewMode.value = "table";
 	formData.value = {};
@@ -620,6 +632,53 @@ function isBadgeColumn(col: Column<T>, row: T): boolean {
 
 const totalPages = computed(() => pagination.value.last_page);
 
+const showAuditDialog = ref(false);
+const auditLogs = ref<any[]>([]);
+const auditLoading = ref(false);
+const selectedAuditRow = ref<any>(null);
+const auditPagination = ref({
+	current_page: 1,
+	last_page: 1,
+	total: 0,
+});
+
+const fetchAuditLogs = async (pageNumber = 1) => {
+	if (!props.auditableType) {
+		return;
+	}
+	auditLoading.value = true;
+	try {
+		const params = new URLSearchParams({
+			auditable_type: props.auditableType,
+			page: pageNumber.toString(),
+		});
+		if (selectedAuditRow.value) {
+			params.append("auditable_id", String(selectedAuditRow.value[props.idKey]));
+		}
+		const res = await fetch(`/api/audit-logs?${params.toString()}`);
+		if (res.ok) {
+			const data = await res.json();
+			auditLogs.value = data.data;
+			auditPagination.value = {
+				current_page: data.current_page,
+				last_page: data.last_page,
+				total: data.total,
+			};
+		}
+	} catch (e) {
+		console.error("Failed to fetch audit logs", e);
+	} finally {
+		auditLoading.value = false;
+	}
+};
+
+const openAuditLogs = (row: any = null) => {
+	selectedAuditRow.value = row;
+	auditLogs.value = [];
+	showAuditDialog.value = true;
+	fetchAuditLogs(1);
+};
+
 defineExpose({
 	formData,
 	dialogMode,
@@ -697,7 +756,7 @@ defineExpose({
                     </DropdownMenu>
 
                     <Button
-                        v-if="!disableDelete"
+                        v-if="!disableDelete && canViewTrash"
                         variant="outline"
                         @click="showTrash = !showTrash"
                         class="flex h-10 items-center gap-2 rounded-lg border-dashed"
@@ -712,6 +771,16 @@ defineExpose({
                         <span>{{
                             showTrash ? 'Tutup Sampah' : 'Tong Sampah'
                         }}</span>
+                    </Button>
+                    <Button
+                        v-if="auditableType && !showTrash && canViewAuditLogs"
+                        variant="outline"
+                        @click="openAuditLogs()"
+                        class="flex h-10 items-center gap-2 rounded-lg border border-slate-200"
+                        title="Tampilkan Log Aktivitas"
+                    >
+                        <History class="h-4 w-4 text-slate-500" />
+                        <span>Log Aktivitas</span>
                     </Button>
                     <Button
                         v-if="!showTrash"
@@ -927,6 +996,16 @@ defineExpose({
                                         </template>
                                         <template v-else>
                                             <slot name="actions" :row="row" />
+                                            <Button
+                                                v-if="auditableType && canViewAuditLogs"
+                                                size="icon-sm"
+                                                variant="ghost"
+                                                class="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                                                @click="openAuditLogs(row)"
+                                                title="Riwayat Perubahan"
+                                            >
+                                                <History class="h-4 w-4" />
+                                            </Button>
                                             <Button
                                                 v-if="!disableEdit"
                                                 size="icon-sm"
@@ -1419,6 +1498,141 @@ defineExpose({
                             class="mr-2 h-4 w-4 animate-spin"
                         />
                         Hapus Permanen
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <!-- Audit Log History Dialog -->
+        <Dialog v-model:open="showAuditDialog">
+            <DialogContent class="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle class="flex items-center gap-2 text-xl font-bold">
+                        <History class="h-5 w-5 text-brand-600" />
+                        <span v-if="selectedAuditRow">Riwayat Perubahan: {{ resourceName }} #{{ selectedAuditRow[idKey] }}</span>
+                        <span v-else>Log Aktivitas: {{ resourceName }}</span>
+                    </DialogTitle>
+                    <DialogDescription>
+                        Daftar riwayat aksi, waktu, perubahan nilai, dan pelaku transaksi.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div class="mt-4 space-y-4">
+                    <div v-if="auditLoading" class="flex flex-col items-center justify-center py-12">
+                        <Loader2 class="h-8 w-8 animate-spin text-brand-600 mb-2" />
+                        <span class="text-xs font-semibold text-muted-foreground uppercase">Memuat data log...</span>
+                    </div>
+
+                    <div v-else-if="auditLogs.length === 0" class="flex flex-col items-center justify-center py-12 border border-dashed rounded-xl bg-muted/20">
+                        <History class="h-8 w-8 text-muted-foreground/50 mb-2" />
+                        <span class="text-xs font-black text-muted-foreground uppercase">Belum ada riwayat aktivitas tercatat</span>
+                    </div>
+
+                    <div v-else class="relative border-l border-border pl-6 ml-3 space-y-6">
+                        <div v-for="log in auditLogs" :key="log.id" class="relative group">
+                            <!-- Dot Indicator -->
+                            <div 
+                                class="absolute -left-[31px] top-1.5 size-4 rounded-full border-2 border-background flex items-center justify-center"
+                                :class="{
+                                    'bg-emerald-500': log.action === 'create',
+                                    'bg-blue-500': log.action === 'update',
+                                    'bg-rose-500': log.action === 'delete',
+                                    'bg-amber-500': log.action === 'restore'
+                                }"
+                            >
+                            </div>
+
+                            <div class="space-y-1">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-sm text-foreground">{{ log.user?.name || 'Sistem' }}</span>
+                                        <span 
+                                            class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wider"
+                                            :class="{
+                                                'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400': log.action === 'create',
+                                                'bg-blue-50 text-blue-700 dark:bg-blue-950/20 dark:text-blue-400': log.action === 'update',
+                                                'bg-rose-50 text-rose-700 dark:bg-rose-950/20 dark:text-rose-400': log.action === 'delete',
+                                                'bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400': log.action === 'restore'
+                                            }"
+                                        >
+                                            {{ log.action }}
+                                        </span>
+                                    </div>
+                                    <span class="text-xs text-muted-foreground font-semibold">
+                                        {{ new Date(log.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) }}
+                                    </span>
+                                </div>
+
+                                <p class="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                                    <span>IP: {{ log.ip_address || '—' }}</span>
+                                    <span>•</span>
+                                    <span class="truncate max-w-[250px]" :title="log.user_agent">{{ log.user_agent || '—' }}</span>
+                                </p>
+
+                                <!-- Audit Value Differences -->
+                                <div v-if="log.action === 'update' && log.old_values" class="mt-2 text-xs bg-muted/30 border border-border/50 rounded-lg overflow-hidden">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr class="bg-muted/50 border-b border-border/50">
+                                                <th class="px-3 py-1.5 font-bold text-muted-foreground uppercase text-[10px]">Kolom</th>
+                                                <th class="px-3 py-1.5 font-bold text-muted-foreground uppercase text-[10px]">Sebelumnya</th>
+                                                <th class="px-3 py-1.5 font-bold text-muted-foreground uppercase text-[10px]">Menjadi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-border/30">
+                                            <tr v-for="(newVal, key) in log.new_values" :key="key" class="font-medium">
+                                                <td class="px-3 py-1.5 font-semibold text-slate-800 dark:text-slate-200 capitalize font-mono">{{ key.replace('_', ' ') }}</td>
+                                                <td class="px-3 py-1.5 text-rose-600 bg-rose-50/10 dark:text-rose-400 truncate max-w-[150px]">{{ log.old_values[key] === null || log.old_values[key] === undefined ? '—' : log.old_values[key] }}</td>
+                                                <td class="px-3 py-1.5 text-emerald-600 bg-emerald-50/10 dark:text-emerald-400 truncate max-w-[150px]">{{ newVal === null || newVal === undefined ? '—' : newVal }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div v-else-if="log.action === 'create' && log.new_values" class="mt-2 text-xs bg-muted/20 border border-border/30 rounded-lg p-3">
+                                    <span class="text-muted-foreground font-semibold block mb-1">Data Awal:</span>
+                                    <div class="grid grid-cols-2 gap-x-4 gap-y-1 font-medium text-slate-600 dark:text-slate-400">
+                                        <div v-for="(val, key) in log.new_values" :key="key" class="truncate">
+                                            <span class="font-mono text-[11px] capitalize text-slate-400 mr-1">{{ key.replace('_', ' ') }}:</span>
+                                            <span class="text-slate-700 dark:text-slate-300 font-semibold">{{ val === null || val === undefined ? '—' : val }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audit Logs Pagination -->
+                    <div v-if="auditPagination.last_page > 1" class="flex items-center justify-between border-t pt-4">
+                        <span class="text-xs text-muted-foreground font-semibold">
+                            Hal. {{ auditPagination.current_page }} dari {{ auditPagination.last_page }}
+                        </span>
+                        <div class="flex items-center gap-1.5">
+                            <Button 
+                                size="sm" 
+                                variant="outline" 
+                                class="h-8 rounded-lg cursor-pointer text-xs" 
+                                :disabled="auditPagination.current_page === 1 || auditLoading" 
+                                @click="fetchAuditLogs(auditPagination.current_page - 1)"
+                            >
+                                Sebelum
+                            </Button>
+                            <Button 
+                                size="sm" 
+                                variant="outline" 
+                                class="h-8 rounded-lg cursor-pointer text-xs" 
+                                :disabled="auditPagination.current_page === auditPagination.last_page || auditLoading" 
+                                @click="fetchAuditLogs(auditPagination.current_page + 1)"
+                            >
+                                Sesudah
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter class="mt-6 border-t pt-4">
+                    <Button variant="outline" @click="showAuditDialog = false">
+                        Tutup
                     </Button>
                 </DialogFooter>
             </DialogContent>

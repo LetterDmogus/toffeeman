@@ -235,12 +235,13 @@ const addingBatch = ref(false);
 const newBatch = ref({
 	batch_number: "",
 	qty: 0,
+	price: 0,
 	expiration_date: "",
 });
 
 const switchToBatches = async (ingredient: any) => {
 	selectedIngredient.value = ingredient;
-	newBatch.value = { batch_number: "", qty: 0, expiration_date: "" };
+	newBatch.value = { batch_number: "", qty: 0, price: 0, expiration_date: "" };
 	await fetchBatches();
 	viewMode.value = "batches";
 };
@@ -292,7 +293,7 @@ const addBatch = async () => {
 		});
 
 		if (res.ok) {
-			newBatch.value = { batch_number: "", qty: 0, expiration_date: "" };
+			newBatch.value = { batch_number: "", qty: 0, price: 0, expiration_date: "" };
 			await fetchBatches();
 		}
 	} finally {
@@ -341,6 +342,7 @@ const formatDate = (val: string) => {
 				:form-fields="[]"
 				:badge-map="badgeMap"
 				@form-opened="handleFormOpened"
+				auditable-type="Ingredient"
 			>
 				<template #actions="{ row }">
 					<Button
@@ -496,6 +498,10 @@ const formatDate = (val: string) => {
 							<Input id="batch_qty" type="number" step="0.01" v-model.number="newBatch.qty" required />
 						</div>
 						<div class="space-y-1">
+							<Label for="batch_price">Total Harga Beli (Rp)</Label>
+							<Input id="batch_price" type="number" step="0.01" v-model.number="newBatch.price" required />
+						</div>
+						<div class="space-y-1">
 							<Label for="expiration_date">Tanggal Kedaluwarsa</Label>
 							<Input id="expiration_date" type="date" v-model="newBatch.expiration_date" required />
 						</div>
@@ -513,6 +519,7 @@ const formatDate = (val: string) => {
 							<tr>
 								<th class="p-4">No. Batch</th>
 								<th class="p-4">Stok</th>
+								<th class="p-4">Harga Beli</th>
 								<th class="p-4">Kedaluwarsa</th>
 								<th class="p-4">Dibuat Oleh</th>
 								<th class="p-4 text-right">Aksi</th>
@@ -537,6 +544,7 @@ const formatDate = (val: string) => {
 									</div>
 								</td>
 								<td class="p-4">{{ Number(batch.qty) }} {{ selectedIngredient?.unit }}</td>
+								<td class="p-4">Rp {{ Math.round(batch.price || 0).toLocaleString('id-ID') }}</td>
 								<td class="p-4">{{ formatDate(batch.expiration_date) }}</td>
 								<td class="p-4 text-xs text-muted-foreground">{{ batch.creator?.name || '—' }}</td>
 								<td class="p-4 text-right">

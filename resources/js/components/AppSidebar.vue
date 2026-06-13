@@ -29,6 +29,7 @@ import {
 	Users,
 	UtensilsCrossed,
 	Wallet,
+	Database,
 } from "lucide-vue-next";
 import { computed, ref } from "vue";
 import AppLogo from "@/components/AppLogo.vue";
@@ -117,6 +118,7 @@ const teamNavItems: NavItem[] = [
 
 const siteSettingsNavItems: NavItem[] = [
 	{ title: "IP & Lokasi", href: siteSettings.ipLocation.edit().url, icon: Settings },
+	{ title: "Database", href: "/site-settings/database", icon: Database },
 ];
 
 const page = usePage();
@@ -145,6 +147,7 @@ const mainNavItems = computed(() => {
 		{ title: "Manajemen Absensi", href: attendanceIndex().url, icon: ClipboardList, permission: "attendance-management" },
 		{ title: "Laporan Keuangan", href: routes.reports().url, icon: BarChart3, permission: "view-reports" },
 		{ title: "Laporan Pesanan", href: reports.orders().url, icon: ClipboardCheck, permission: "view-reports" },
+		{ title: "Biaya Operasional", href: ops.expenses().url, icon: Wallet, permission: "view-reports" },
 		{ title: "Penggajian", href: payrollRoutes.index().url, icon: Wallet, permission: "payroll-access" },
 	];
 	return items.filter(item => !item.permission || hasPermission(item.permission));

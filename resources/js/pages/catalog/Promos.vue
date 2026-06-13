@@ -365,6 +365,7 @@ async function submit(
             :columns="columns"
             :formFields="[]"
             :badgeMap="badgeMap"
+            auditable-type="Promo"
             @formOpened="handleFormOpened"
         >
             <template #form="{ mode, cancel, refresh }">

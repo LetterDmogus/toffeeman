@@ -146,6 +146,7 @@ const badgeMap = {
             :form-fields="fields"
             :badge-map="badgeMap"
             :default-visible-columns="['name', 'sku', 'inventory_category_id', 'qty', 'status']"
+            auditable-type="InventoryItem"
         >
             <template #actions="{ row }">
                 <Button 

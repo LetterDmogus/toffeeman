@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { Link, usePage } from "@inertiajs/vue3";
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from "lucide-vue-next";
+import { BookOpen, Folder, LayoutGrid, Menu, Search, RefreshCw } from "lucide-vue-next";
 import { computed } from "vue";
+import { useHandTracking } from "@/composables/useHandTracking";
 import AppLogo from "@/components/AppLogo.vue";
 import AppLogoIcon from "@/components/AppLogoIcon.vue";
 import Breadcrumbs from "@/components/Breadcrumbs.vue";
 import UserMenuContent from "@/components/UserMenuContent.vue";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+const { handTrackingEnabled, isHandModelLoading, toggleHandTracking } = useHandTracking();
 import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
@@ -189,6 +192,21 @@ const rightNavItems: NavItem[] = [
                 </div>
 
                 <div class="ml-auto flex items-center space-x-2">
+                    <button
+                        type="button"
+                        @click="toggleHandTracking"
+                        class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold border transition cursor-pointer select-none"
+                        :class="[
+                            handTrackingEnabled 
+                                ? 'bg-orange-500 border-orange-600 text-white hover:bg-orange-600' 
+                                : 'bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+                        ]"
+                    >
+                        <RefreshCw v-if="isHandModelLoading" class="h-3 w-3 animate-spin" />
+                        <span v-else class="h-1.5 w-1.5 rounded-full" :class="handTrackingEnabled ? 'bg-white animate-ping' : 'bg-neutral-400 dark:bg-neutral-500'"></span>
+                        Hand Tracking: {{ handTrackingEnabled ? 'Aktif' : 'Nonaktif' }}
+                    </button>
+
                     <div class="relative flex items-center space-x-1">
                         <Button
                             variant="ghost"

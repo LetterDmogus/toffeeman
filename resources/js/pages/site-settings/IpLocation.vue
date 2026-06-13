@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Form, Head } from "@inertiajs/vue3";
+import { Form, Head, router } from "@inertiajs/vue3";
 import { ref } from "vue";
 import AppSettingController from "@/actions/App/Http/Controllers/Settings/AppSettingController";
 import Heading from "@/components/Heading.vue";
@@ -31,11 +31,16 @@ const props = defineProps<{
 		latitude: number | null;
 		longitude: number | null;
 		radius_meters: number;
+		website_name: string;
+		address: string | null;
+		contact: string | null;
 	};
 }>();
 
 const gettingLocation = ref(false);
 const locationError = ref<string | null>(null);
+
+
 
 const getCurrentLocation = () => {
 	gettingLocation.value = true;
@@ -92,6 +97,49 @@ const getCurrentLocation = () => {
                 class="space-y-6"
                 v-slot="{ errors, processing }"
             >
+                <!-- General Website Settings -->
+                <div class="grid gap-4 p-4 border border-border rounded-lg bg-muted/20">
+                    <span class="text-sm font-semibold flex items-center gap-2">
+                        General Website Settings
+                    </span>
+
+                    <div class="grid gap-2">
+                        <Label for="website_name" class="text-xs">Nama Website <span class="text-destructive">*</span></Label>
+                        <Input
+                            id="website_name"
+                            class="mt-1 block w-full bg-background"
+                            name="website_name"
+                            :default-value="settings.website_name"
+                            placeholder="Contoh: Toffee Manor"
+                            required
+                        />
+                        <InputError class="mt-2" :message="errors.website_name" />
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="contact" class="text-xs">Kontak (Telepon/HP)</Label>
+                        <Input
+                            id="contact"
+                            class="mt-1 block w-full bg-background"
+                            name="contact"
+                            :default-value="settings.contact || ''"
+                            placeholder="Contoh: +62 812-3456-7890"
+                        />
+                        <InputError class="mt-2" :message="errors.contact" />
+                    </div>
+
+                    <div class="grid gap-2">
+                        <Label for="address" class="text-xs">Alamat</Label>
+                        <textarea
+                            id="address"
+                            class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                            name="address"
+                            placeholder="Contoh: Jl. M.H. Thamrin No. 1, Jakarta Pusat"
+                        >{{ settings.address || '' }}</textarea>
+                        <InputError class="mt-2" :message="errors.address" />
+                    </div>
+                </div>
+
                 <!-- IP Address Restoran -->
                 <div class="grid gap-2">
                     <Label for="restaurant_ip" class="text-sm font-semibold">IP Address Restoran</Label>
@@ -195,6 +243,8 @@ const getCurrentLocation = () => {
                 </div>
             </Form>
         </div>
+
+
 
         <!-- Information Card Horizontal Footer -->
         <div class="border border-border bg-muted/20 rounded-xl p-5 space-y-4">

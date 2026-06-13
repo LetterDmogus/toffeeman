@@ -211,7 +211,7 @@ const badgeMap = { active: "success", inactive: "warning" };
 <template>
     <div class="p-6">
         <div v-if="!selectedPackage" class="animate-in fade-in-0 duration-200">
-            <CRUDTable resource-name="Paket" api-url="/api/packages" :columns="columns" :form-fields="fields" :badge-map="badgeMap">
+            <CRUDTable resource-name="Paket" api-url="/api/packages" :columns="columns" :form-fields="fields" :badge-map="badgeMap" auditable-type="Package">
                 <template #actions="{ row }">
                     <Button size="icon-sm" variant="ghost" class="text-emerald-600 hover:bg-emerald-50" @click="managePackageItems(row)"><ListPlus class="h-4.5 w-4.5" /></Button>
                 </template>

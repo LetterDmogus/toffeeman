@@ -6,8 +6,9 @@ use App\Models\Category;
 use App\Models\MenuItem;
 use App\Models\Promo;
 use App\Models\User;
+use Database\Seeders\RoleAndPositionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Spatie\Permission\Models\Role;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class PromoControllerTest extends TestCase
@@ -20,7 +21,7 @@ class PromoControllerTest extends TestCase
     {
         parent::setUp();
 
-        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed(RoleAndPositionSeeder::class);
 
         $this->admin = User::factory()->create();
         $this->admin->assignRole('admin');
@@ -33,11 +34,14 @@ class PromoControllerTest extends TestCase
             ['name' => 'Test Category', 'description' => 'Test'],
         );
 
+        $name = 'Test Item '.fake()->unique()->word();
+
         return MenuItem::create([
             'category_id' => $category->id,
-            'name' => 'Test Item '.fake()->unique()->word(),
+            'name' => $name,
+            'slug' => Str::slug($name),
             'price' => 20000,
-            'is_available' => true,
+            'status' => 'available',
         ]);
     }
 
@@ -243,7 +247,7 @@ class PromoControllerTest extends TestCase
         $promo->delete();
 
         $response = $this->actingAs($this->admin)
-            ->patchJson("/api/promos/{$promo->id}/restore");
+            ->putJson("/api/promos/{$promo->id}/restore");
 
         $response->assertOk();
         $this->assertDatabaseHas('promos', ['id' => $promo->id, 'deleted_at' => null]);
@@ -255,7 +259,7 @@ class PromoControllerTest extends TestCase
         $promo->delete();
 
         $response = $this->actingAs($this->admin)
-            ->deleteJson("/api/promos/{$promo->id}/force-delete");
+            ->deleteJson("/api/promos/{$promo->id}/force");
 
         $response->assertOk();
         $this->assertDatabaseMissing('promos', ['id' => $promo->id]);

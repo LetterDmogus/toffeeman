@@ -95,6 +95,7 @@ onMounted(async () => {
             :columns="columns"
             :form-fields="fields"
             :badge-map="badgeMap"
+            auditable-type="Employee"
         />
     </div>
 </template>

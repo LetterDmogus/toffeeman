@@ -1149,8 +1149,13 @@ function getStepIndex(status: string) {
                         <div
                             v-for="item in group.items"
                             :key="item.id"
-                            class="group flex cursor-pointer flex-row items-stretch gap-4 border-b py-4 transition-colors hover:border-primary/40 md:flex-col md:gap-0 md:overflow-hidden md:rounded-2xl md:border md:bg-card md:py-0 md:shadow-sm"
-                            @click="openItem(item, item.isPackage)"
+                            class="group flex flex-row items-stretch gap-4 border-b py-4 transition-colors hover:border-primary/40 md:flex-col md:gap-0 md:overflow-hidden md:rounded-2xl md:border md:bg-card md:py-0 md:shadow-sm"
+                            :class="[
+                                item.status === 'sold_out' 
+                                    ? 'opacity-50 grayscale cursor-not-allowed pointer-events-none' 
+                                    : 'cursor-pointer'
+                            ]"
+                            @click="item.status === 'sold_out' ? null : openItem(item, item.isPackage)"
                         >
                             <div
                                 class="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-secondary/50 shadow-sm md:aspect-[4/3] md:h-48 md:w-full md:rounded-none md:shadow-none"
@@ -1171,6 +1176,10 @@ function getStepIndex(status: string) {
                                 >
                                     Paket
                                 </Badge>
+                                <!-- SOLD OUT OVERLAY -->
+                                <div v-if="item.status === 'sold_out'" class="absolute inset-0 flex items-center justify-center bg-black/60 text-[10px] font-black uppercase text-white tracking-widest">
+                                    Habis
+                                </div>
                             </div>
 
                             <div

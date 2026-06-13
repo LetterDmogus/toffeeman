@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Ingredient;
+use App\Models\IngredientBatch;
 use App\Models\IngredientCategory;
 use App\Models\User;
 use Database\Seeders\RoleAndPositionSeeder;
@@ -39,9 +40,11 @@ class IngredientTest extends TestCase
             'name' => 'Milk 1L',
             'sku' => 'ING-DAI-MILK-01',
             'ingredient_category_id' => $category->id,
-            'price' => 15000,
+            'price' => 0.00, // Master price is 0
             'qty' => 0.00,
             'unit' => 'bottle',
+            'small_unit' => 'ml',
+            'conversion_factor' => 1000.00,
             'min_qty' => 5.00,
             'storage_temperature' => 'Dingin (4°C)',
             'small_unit_qty' => 12000.00, // 12000 ml
@@ -49,7 +52,7 @@ class IngredientTest extends TestCase
         ]);
 
         $response->assertStatus(201);
-        $response->assertJsonPath('qty', '0.00');
+        $response->assertJsonPath('qty', 0);
 
         $ingredientId = $response->json('id');
 
@@ -64,6 +67,7 @@ class IngredientTest extends TestCase
             'ingredient_id' => $ingredientId,
             'batch_number' => 'BCH-MLK-001',
             'qty' => 12.00,
+            'price' => 15000.00, // Price is defined on the batch itself
             'expiration_date' => '2026-07-01',
         ]);
 
@@ -71,12 +75,34 @@ class IngredientTest extends TestCase
         $this->assertDatabaseHas('ingredient_batches', [
             'ingredient_id' => $ingredientId,
             'batch_number' => 'BCH-MLK-001',
-            'qty' => 12.00,
+            'qty' => 12000.00,
+            'price' => 15000.00,
             'expiration_date' => '2026-07-01 00:00:00',
             'created_by' => $this->admin->id,
         ]);
 
         // Verify ingredient qty was recalculated to 12.00
         $this->assertEquals(12.00, Ingredient::find($ingredientId)->qty);
+
+        // Verify transaction was created automatically
+        $this->assertDatabaseHas('transactions', [
+            'type' => 'expense',
+            'category' => 'ingredient_purchase',
+            'reference_type' => IngredientBatch::class,
+            'reference_id' => $batchResponse->json('id'),
+            'amount' => 15000.00,
+        ]);
+
+        // Delete batch and verify transaction is deleted
+        $batchId = $batchResponse->json('id');
+        $this->actingAs($this->admin)->deleteJson(route('api.ingredient-batches.destroy', $batchId))
+            ->assertStatus(200);
+
+        $this->assertSoftDeleted('transactions', [
+            'type' => 'expense',
+            'category' => 'ingredient_purchase',
+            'reference_type' => IngredientBatch::class,
+            'reference_id' => $batchId,
+        ]);
     }
 }

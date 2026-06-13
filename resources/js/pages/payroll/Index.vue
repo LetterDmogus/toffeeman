@@ -199,7 +199,7 @@ function onSearch(e: Event) {
                         class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                     >
                         <Download class="h-3.5 w-3.5" />
-                        Export CSV
+                        Export Excel
                     </a>
                     <button
                         class="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-brand-300 hover:text-brand-600 dark:border-slate-700 cursor-pointer"
@@ -414,6 +414,13 @@ function onSearch(e: Event) {
                         />
                     </div>
                     <div class="flex items-center gap-2">
+                        <a
+                            :href="payrollRoutes.exportList({ month: currentMonth, year: currentYear, status: statusFilter, search: searchQuery }).url"
+                            class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                        >
+                            <Download class="h-3.5 w-3.5" />
+                            Export Excel
+                        </a>
                         <Filter class="h-4 w-4 text-slate-400" />
                         <select
                             v-model="statusFilter"

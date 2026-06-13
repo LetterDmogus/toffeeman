@@ -9,6 +9,7 @@ import {
 	ChevronRight,
 	DollarSign,
 	Download,
+	Eye,
 	Loader2,
 	Printer,
 	Receipt,
@@ -21,6 +22,13 @@ import { onMounted, ref, watch } from "vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+} from "@/components/ui/dialog";
 
 // Date Selection
 const selectedDate = ref(new Date().toISOString().split("T")[0]);
@@ -57,13 +65,45 @@ const visibleColumns = ref<Record<string, boolean>>({
 	transaction_number: true,
 	type: true,
 	category: true,
-	description: true,
+	description: false,
 	payment_method: true,
 	amount: true,
 	transaction_date: true,
-	user: true,
+	user: false,
 });
 const showColumnDropdown = ref(false);
+
+const showDetailDialog = ref(false);
+const selectedTransaction = ref<any>(null);
+
+const openDetail = (row: any) => {
+	selectedTransaction.value = row;
+	showDetailDialog.value = true;
+};
+
+const categoryLabels: Record<string, string> = {
+	electricity: "Listrik",
+	marketing: "Promosi / Iklan",
+	water: "Air (PAM)",
+	internet: "Internet & Telepon",
+	rent: "Sewa Tempat",
+	maintenance: "Pemeliharaan / Perbaikan",
+	office_supplies: "Alat Tulis Kantor",
+	other: "Lainnya",
+	payroll: "Gaji Karyawan",
+	inventory_purchase: "Pembelian Inventaris",
+	sales: "Penjualan / Pesanan",
+	order: "Pesanan",
+};
+
+const paymentMethodLabels: Record<string, string> = {
+	cash: "Tunai (Cash)",
+	bank_transfer: "Transfer Bank",
+	e_wallet: "E-Wallet",
+	card: "Kartu Debit/Kredit",
+	qris: "QRIS",
+	transfer: "Transfer Bank",
+};
 
 let paymentChartInstance: any = null;
 let trendChartInstance: any = null;
@@ -487,11 +527,12 @@ onMounted(() => {
 						<th v-if="visibleColumns.amount" class="px-6 py-4 font-black text-xs text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
 						<th v-if="visibleColumns.transaction_date" class="px-6 py-4 font-black text-xs text-slate-400 uppercase tracking-widest">Tanggal</th>
 						<th v-if="visibleColumns.user" class="px-6 py-4 font-black text-xs text-slate-400 uppercase tracking-widest print:hidden">Kasir</th>
+						<th class="px-6 py-4 font-black text-xs text-slate-400 uppercase tracking-widest text-center print:hidden w-20">Aksi</th>
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-slate-100 dark:divide-slate-800 relative">
-					<tr v-if="loadingTransactions" class="h-28"><td colspan="8" class="text-center"><Loader2 class="animate-spin h-6 w-6 text-brand-600 inline-block mr-2" /><span class="text-xs font-black text-slate-400 uppercase">Memuat data kas...</span></td></tr>
-					<tr v-else-if="transactions.length === 0" class="h-28"><td colspan="8" class="text-center text-xs font-black text-slate-400 uppercase">Tidak ada transaksi tercatat</td></tr>
+					<tr v-if="loadingTransactions" class="h-28"><td colspan="9" class="text-center"><Loader2 class="animate-spin h-6 w-6 text-brand-600 inline-block mr-2" /><span class="text-xs font-black text-slate-400 uppercase">Memuat data kas...</span></td></tr>
+					<tr v-else-if="transactions.length === 0" class="h-28"><td colspan="9" class="text-center text-xs font-black text-slate-400 uppercase">Tidak ada transaksi tercatat</td></tr>
 					<tr v-for="t in transactions" :key="t.id" v-else class="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-all font-bold text-xs text-slate-600 dark:text-slate-300">
 						<td v-if="visibleColumns.transaction_number" class="px-6 py-4 font-black text-slate-800 dark:text-slate-100 select-all font-mono">{{ t.transaction_number }}</td>
 						<td v-if="visibleColumns.type" class="px-6 py-4">
@@ -500,11 +541,11 @@ onMounted(() => {
 								{{ t.type === 'income' ? 'Masuk' : 'Keluar' }}
 							</span>
 						</td>
-						<td v-if="visibleColumns.category" class="px-6 py-4 capitalize font-semibold">{{ t.category.replace('_', ' ') }}</td>
+						<td v-if="visibleColumns.category" class="px-6 py-4 capitalize font-semibold">{{ categoryLabels[t.category] || t.category.replace('_', ' ') }}</td>
 						<td v-if="visibleColumns.description" class="px-6 py-4 max-w-xs truncate font-medium text-slate-500 dark:text-slate-400" :title="t.description">{{ t.description || '—' }}</td>
 						<td v-if="visibleColumns.payment_method" class="px-6 py-4 text-center">
 							<span class="px-2 py-0.5 rounded-md border text-[9px] font-black uppercase" :class="t.payment_method === 'qris' ? 'border-indigo-200 bg-indigo-50 text-indigo-600 dark:border-indigo-950/50 dark:bg-indigo-950/30' : (t.payment_method === 'transfer' ? 'border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-950/50 dark:bg-brand-950/30' : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900')">
-								{{ t.payment_method || 'TUNAI' }}
+								{{ paymentMethodLabels[t.payment_method] || t.payment_method || 'TUNAI' }}
 							</span>
 						</td>
 						<td v-if="visibleColumns.amount" class="px-6 py-4 text-right font-black text-sm" :class="t.type === 'income' ? 'text-slate-800 dark:text-slate-100' : 'text-rose-500'">
@@ -512,6 +553,17 @@ onMounted(() => {
 						</td>
 						<td v-if="visibleColumns.transaction_date" class="px-6 py-4 font-semibold text-slate-500 select-all">{{ new Date(t.transaction_date).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) }}</td>
 						<td v-if="visibleColumns.user" class="px-6 py-4 font-medium text-slate-400 print:hidden">{{ t.user?.name || '—' }}</td>
+						<td class="px-6 py-4 text-center print:hidden">
+							<Button 
+								size="icon-sm" 
+								variant="ghost" 
+								class="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/50"
+								@click="openDetail(t)" 
+								title="Cek Detail"
+							>
+								<Eye class="h-4 w-4" />
+							</Button>
+						</td>
 					</tr>
 				</tbody>
 			</table>
@@ -532,4 +584,93 @@ onMounted(() => {
 			</div>
 		</div>
 	</div>
+
+	<!-- Detail Dialog Modal -->
+	<Dialog v-model:open="showDetailDialog">
+		<DialogContent class="sm:max-w-lg text-slate-900 dark:text-slate-100">
+			<DialogHeader>
+				<DialogTitle class="text-xl font-bold flex items-center gap-2">
+					<Eye class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+					Detail Transaksi
+				</DialogTitle>
+			</DialogHeader>
+
+			<div v-if="selectedTransaction" class="mt-4 space-y-4 text-sm">
+				<div class="grid grid-cols-2 gap-4 border-b border-border pb-4">
+					<div>
+						<span class="text-muted-foreground block text-xs font-medium uppercase tracking-wider">No. Transaksi</span>
+						<span class="font-mono text-base font-semibold text-foreground">{{ selectedTransaction.transaction_number }}</span>
+					</div>
+					<div>
+						<span class="text-muted-foreground block text-xs font-medium uppercase tracking-wider">Tanggal Transaksi</span>
+						<span class="font-semibold text-foreground">
+							{{ selectedTransaction.transaction_date ? new Date(selectedTransaction.transaction_date).toLocaleDateString("id-ID", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '—' }}
+						</span>
+					</div>
+				</div>
+
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<span class="text-muted-foreground block text-xs font-medium uppercase tracking-wider">Kategori</span>
+						<span class="inline-flex items-center rounded-md bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground mt-0.5 capitalize">
+							{{ categoryLabels[selectedTransaction.category] || selectedTransaction.category.replace('_', ' ') }}
+						</span>
+					</div>
+					<div>
+						<span class="text-muted-foreground block text-xs font-medium uppercase tracking-wider">Nominal</span>
+						<span class="text-lg font-bold" :class="selectedTransaction.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'">
+							{{ selectedTransaction.type === 'income' ? '+' : '-' }}Rp {{ Math.round(selectedTransaction.amount).toLocaleString("id-ID") }}
+						</span>
+					</div>
+				</div>
+
+				<div class="grid grid-cols-2 gap-4">
+					<div>
+						<span class="text-muted-foreground block text-xs font-medium uppercase tracking-wider">Metode Pembayaran</span>
+						<span class="font-medium text-foreground uppercase">
+							{{ paymentMethodLabels[selectedTransaction.payment_method] || selectedTransaction.payment_method || 'TUNAI' }}
+						</span>
+					</div>
+					<div>
+						<span class="text-muted-foreground block text-xs font-medium uppercase tracking-wider">Tipe Transaksi</span>
+						<span 
+							class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold mt-0.5"
+							:class="selectedTransaction.type === 'income' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400'"
+						>
+							{{ selectedTransaction.type === "income" ? "Pemasukan (Masuk)" : "Pengeluaran (Keluar)" }}
+						</span>
+					</div>
+				</div>
+
+				<div class="border-t border-border pt-4">
+					<span class="text-muted-foreground block text-xs font-medium uppercase tracking-wider">Keterangan / Catatan</span>
+					<p class="text-foreground mt-1 bg-muted/30 p-2.5 rounded-md border border-border/50 min-h-[60px] whitespace-pre-line italic">
+						{{ selectedTransaction.description || 'Tidak ada keterangan.' }}
+					</p>
+				</div>
+
+				<div class="grid grid-cols-2 gap-4 border-t border-border pt-4">
+					<div>
+						<span class="text-muted-foreground block text-xs font-medium uppercase tracking-wider">Kasir / Input Oleh</span>
+						<span class="font-medium text-foreground">
+							{{ selectedTransaction.user?.name || '—' }}
+						</span>
+					</div>
+					<div>
+						<span class="text-muted-foreground block text-xs font-medium uppercase tracking-wider">Waktu Input</span>
+						<span class="font-medium text-foreground">
+							{{ new Date(selectedTransaction.created_at).toLocaleString("id-ID", { dateStyle: 'short', timeStyle: 'short' }) }}
+						</span>
+					</div>
+				</div>
+			</div>
+
+			<DialogFooter class="mt-6">
+				<Button variant="outline" @click="showDetailDialog = false">
+					Tutup
+				</Button>
+			</DialogFooter>
+		</DialogContent>
+	</Dialog>
 </template>
+

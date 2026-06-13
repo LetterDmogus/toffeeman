@@ -199,6 +199,7 @@ const submitCustomForm = async (cancel: () => void, refresh: () => void) => {
             disable-edit
             disable-delete
             :default-visible-columns="['date', 'reference_number', 'details_count', 'creator', 'notes']"
+            auditable-type="InventoryIn"
         >
             <template #actions="{ row }">
                 <Button 

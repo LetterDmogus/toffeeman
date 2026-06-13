@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AddOnController;
 use App\Http\Controllers\Api\AttendanceController as ApiAttendanceController;
+use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\IngredientBatchController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\Api\PromoController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\TableController;
+use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\KioskController;
@@ -109,6 +111,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::inertia('ingredient-categories', 'ops/IngredientCategories')->name('ingredient-categories');
         Route::inertia('ingredient-batches', 'ops/IngredientBatches')->name('ingredient-batches');
         Route::inertia('ingredient-mutations', 'ops/IngredientMutations')->name('ingredient-mutations');
+        Route::inertia('expenses', 'ops/Expenses')->name('expenses');
     });
 
     // Manajemen Tim
@@ -123,6 +126,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('site-settings')->name('site-settings.')->group(function () {
         Route::get('ip-location', [AppSettingController::class, 'edit'])->name('ip-location.edit');
         Route::patch('ip-location', [AppSettingController::class, 'update'])->name('ip-location.update');
+        Route::get('database', [AppSettingController::class, 'databaseEdit'])->name('database.edit');
+        Route::get('database/backup', [AppSettingController::class, 'backup'])->name('database.backup');
+        Route::post('database/reset', [AppSettingController::class, 'reset'])->name('database.reset');
     });
 
     // Absensi Karyawan
@@ -152,6 +158,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             'add-ons' => AddOnController::class,
             'promos' => PromoController::class,
             'orders' => OrderController::class,
+            'transactions' => TransactionController::class,
         ];
 
         foreach ($resources as $uri => $controller) {
@@ -184,6 +191,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('kitchen/orders', [KitchenController::class, 'index'])->name('kitchen.orders');
         Route::patch('kitchen/orders/{order}/status', [KitchenController::class, 'updateStatus'])->name('kitchen.orders.status');
         Route::patch('kitchen/items/{item}/status', [KitchenController::class, 'updateItemStatus'])->name('kitchen.items.status');
+        Route::get('kitchen/menu-items', [KitchenController::class, 'getMenuItems'])->name('kitchen.menu-items');
+        Route::patch('kitchen/menu-items/{menuItem}/toggle', [KitchenController::class, 'toggleMenuItemStatus'])->name('kitchen.menu-items.toggle');
         Route::get('kitchen/orders/{order}/tts-text', [KitchenController::class, 'getOrderTtsText'])->name('kitchen.orders.tts-text');
         Route::get('kitchen/items/{item}/tts-text', [KitchenController::class, 'getItemTtsText'])->name('kitchen.items.tts-text');
 
@@ -205,6 +214,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('reports/dashboard', [ReportController::class, 'dashboard'])->name('reports.dashboard');
         Route::get('reports/transactions', [ReportController::class, 'transactions'])->name('reports.transactions');
         Route::get('reports/orders', [ReportController::class, 'ordersReport'])->name('reports.orders');
+        Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
 
         // Payroll API
         Route::get('payrolls', [ApiPayrollController::class, 'index'])->name('payrolls.index');
