@@ -9,9 +9,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { register } from "@/routes";
-import { store } from "@/routes/login";
-import { request } from "@/routes/password";
 
 defineOptions({
 	layout: (page: any) => page,
@@ -49,7 +46,8 @@ defineProps<{
             </div>
 
             <Form
-                v-bind="store.form()"
+                :action="route('login.store')"
+                method="post"
                 :reset-on-success="['password']"
                 v-slot="{ errors, processing }"
                 class="flex flex-col gap-5 font-sans animate-in fade-in-0 duration-200"
@@ -75,7 +73,7 @@ defineProps<{
                         <Label for="password" class="text-sm font-semibold text-neutral-800">Password</Label>
                         <TextLink
                             v-if="canResetPassword"
-                            :href="request()"
+                            :href="route('password.request')"
                             class="text-xs text-amber-900 hover:text-amber-700 font-medium"
                             :tabindex="5"
                         >
@@ -114,7 +112,7 @@ defineProps<{
 
                 <div class="text-center text-sm text-neutral-600">
                     Belum punya akun?
-                    <TextLink :href="register()" :tabindex="5" class="text-amber-900 hover:text-amber-700 font-semibold ml-1">Daftar Sekarang</TextLink>
+                    <TextLink :href="route('register')" :tabindex="5" class="text-amber-900 hover:text-amber-700 font-semibold ml-1">Daftar Sekarang</TextLink>
                 </div>
             </Form>
         </div>

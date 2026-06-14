@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { Form, Head, router } from "@inertiajs/vue3";
 import { ref } from "vue";
-import AppSettingController from "@/actions/App/Http/Controllers/Settings/AppSettingController";
 import Heading from "@/components/Heading.vue";
 import InputError from "@/components/InputError.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MapPin, Info, Navigation, Loader2 } from "lucide-vue-next";
-import { edit } from "@/routes/site-settings/ip-location";
 import AppLayout from "@/layouts/AppLayout.vue";
 
 defineOptions({
@@ -16,11 +14,11 @@ defineOptions({
 	breadcrumbs: [
 		{
 			title: "Site Settings",
-			href: edit(),
+			href: route("site-settings.ip-location.edit"),
 		},
 		{
 			title: "IP & Location",
-			href: edit(),
+			href: route("site-settings.ip-location.edit"),
 		},
 	],
 });
@@ -93,7 +91,8 @@ const getCurrentLocation = () => {
             </div>
 
             <Form
-                v-bind="AppSettingController.update.form()"
+                :action="route('site-settings.ip-location.update')"
+                method="patch"
                 class="space-y-6"
                 v-slot="{ errors, processing }"
             >

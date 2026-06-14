@@ -15,14 +15,13 @@ import CRUDTable from "@/components/CRUDTable.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import catalog from "@/routes/catalog";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Katalog Produk", href: "#" },
-			{ title: "Menu & Varian", href: catalog.menu().url },
+			{ title: "Menu & Varian", href: route("catalog.menu") },
 		],
 	},
 });

@@ -10,14 +10,13 @@ import {
     Zap,
 } from "lucide-vue-next";
 import { computed, onMounted, ref, watch } from "vue";
-import payroll from "@/routes/payroll/index";
 
 defineOptions({
     layout: {
         breadcrumbs: [
             { title: "Dashboard", href: "/dashboard" },
-            { title: "Penggajian", href: payroll.index().url },
-            { title: "Generate Slip", href: payroll.create().url },
+            { title: "Penggajian", href: route("payroll.index") },
+            { title: "Generate Slip", href: route("payroll.create") },
         ],
     },
 });
@@ -68,7 +67,7 @@ function nextMonth() {
 function generate(employeeId: number | null = null) {
     generating.value = true;
     router.post(
-        payroll.generate().url,
+        route("payroll.generate"),
         { 
             month: currentMonth.value, 
             year: currentYear.value,

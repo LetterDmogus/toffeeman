@@ -17,7 +17,6 @@ import {
     User,
 } from "lucide-vue-next";
 import { computed } from "vue";
-import payrollRoutes from "@/routes/payroll/index";
 
 const props = defineProps<{
     payroll: {
@@ -60,7 +59,7 @@ defineOptions({
     layout: {
         breadcrumbs: [
             { title: "Dashboard", href: "/dashboard" },
-            { title: "Penggajian", href: payrollRoutes.index().url },
+            { title: "Penggajian", href: route("payroll.index") },
             { title: "Detail Slip", href: "#" },
         ],
     },
@@ -150,24 +149,24 @@ const form = useForm({
 });
 
 function save() {
-    form.patch(payrollRoutes.update(props.payroll.id).url, {
+    form.patch(route("payroll.update", props.payroll.id), {
         preserveScroll: true,
     });
 }
 
 function approve() {
     if (!confirm("Setujui slip gaji ini?")) return;
-    router.patch(payrollRoutes.approve(props.payroll.id).url, {}, { preserveScroll: true });
+    router.patch(route("payroll.approve", props.payroll.id), {}, { preserveScroll: true });
 }
 
 function pay() {
     if (!confirm("Tandai slip gaji ini sebagai DIBAYAR? Transaksi pengeluaran akan dibuat otomatis.")) return;
-    router.patch(payrollRoutes.pay(props.payroll.id).url, {}, { preserveScroll: true });
+    router.patch(route("payroll.pay", props.payroll.id), {}, { preserveScroll: true });
 }
 
 function deleteDraft() {
     if (!confirm("Hapus slip gaji ini?")) return;
-    router.delete(payrollRoutes.destroy(props.payroll.id).url);
+    router.delete(route("payroll.destroy", props.payroll.id));
 }
 </script>
 
@@ -178,9 +177,9 @@ function deleteDraft() {
         <!-- Back + header -->
         <div class="flex items-center gap-3">
             <a
-                :href="payrollRoutes.index().url"
+                :href="route('payroll.index')"
                 class="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:border-brand-300 hover:text-brand-600 dark:border-slate-700"
-                @click.prevent="router.visit(payrollRoutes.index().url)"
+                @click.prevent="router.visit(route('payroll.index'))"
             >
                 <ChevronLeft class="h-4 w-4" />
             </a>
@@ -204,7 +203,7 @@ function deleteDraft() {
             <!-- Actions -->
             <div class="flex items-center gap-2">
                 <a
-                    :href="payrollRoutes.export(props.payroll.id).url"
+                    :href="route('payroll.export', props.payroll.id)"
                     target="_blank"
                     class="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-slate-700 dark:text-slate-300"
                 >

@@ -13,14 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import ops from "@/routes/ops";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Operasional", href: "#" },
-			{ title: "Barang / Peralatan", href: ops.inventory().url },
+			{ title: "Barang / Peralatan", href: route("ops.inventory") },
 			{ title: "Log Barang Masuk", href: "#" },
 		],
 	},

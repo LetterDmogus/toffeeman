@@ -3,7 +3,6 @@ import { Head, useForm, router } from "@inertiajs/vue3";
 import { onMounted, onUnmounted, ref, computed, watch } from "vue";
 import { Camera, MapPin, RefreshCw, CheckCircle, AlertCircle, ShieldAlert, ArrowLeft, Users, UserCheck } from "lucide-vue-next";
 import { Link } from "@inertiajs/vue3";
-import { dashboard } from "@/routes";
 import { useHandTracking } from "@/composables/useHandTracking";
 
 const props = defineProps<{
@@ -489,7 +488,7 @@ onUnmounted(() => {
                 </button>
                 <Link 
                     v-else 
-                    :href="dashboard().url" 
+                    :href="route('dashboard')" 
                     class="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900 transition cursor-pointer"
                 >
                     <ArrowLeft class="h-5 w-5" />

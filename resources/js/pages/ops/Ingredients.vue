@@ -16,14 +16,13 @@ const isExpired = (dateStr: string) => {
 	expDate.setHours(0, 0, 0, 0);
 	return expDate < today;
 };
-import ops from "@/routes/ops";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Operasional", href: "#" },
-			{ title: "Barang / Peralatan", href: ops.inventory().url },
+			{ title: "Barang / Peralatan", href: route("ops.inventory") },
 			{ title: "Bahan Baku", href: "#" },
 		],
 	},

@@ -8,14 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import catalog from "@/routes/catalog";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Katalog", href: "#" },
-			{ title: "Sistem Promo", href: catalog.promos().url },
+			{ title: "Sistem Promo", href: route("catalog.promos") },
 		],
 	},
 });

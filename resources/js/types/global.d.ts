@@ -1,4 +1,9 @@
 import type { Auth } from "@/types/auth";
+import { route as routeFn } from "ziggy-js";
+
+declare global {
+	const route: typeof routeFn;
+}
 
 // Extend ImportMeta interface for Vite...
 declare module "vite/client" {
@@ -29,5 +34,6 @@ declare module "vue" {
 		$inertia: typeof Router;
 		$page: Page;
 		$headManager: ReturnType<typeof createHeadManager>;
+		route: typeof routeFn;
 	}
 }

@@ -15,14 +15,13 @@ import { computed, onMounted, ref } from "vue";
 import { Link } from "@inertiajs/vue3";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import catalog from "@/routes/catalog";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Katalog Produk", href: "#" },
-			{ title: "Almanak Resep", href: catalog.recipeBook().url },
+			{ title: "Almanak Resep", href: route("catalog.recipe-book") },
 		],
 	},
 });
@@ -109,7 +108,7 @@ const filteredMenuItems = computed(() => {
                 </p>
             </div>
             <Button as-child class="bg-brand-600 hover:bg-brand-700 text-white font-semibold">
-                <Link :href="catalog.menu().url">
+                <Link :href="route('catalog.menu')">
                     Kelola Resep & Menu
                     <ArrowUpRight class="ml-2 h-4 w-4" />
                 </Link>
@@ -287,7 +286,7 @@ const filteredMenuItems = computed(() => {
                             Formulasi Resep (Bahan Baku)
                         </h3>
                         <Button as-child variant="outline" size="sm" class="h-8 text-xs">
-                            <Link :href="catalog.menu().url">
+                            <Link :href="route('catalog.menu')">
                                 Edit Resep
                                 <ArrowUpRight class="ml-1 h-3.5 w-3.5" />
                             </Link>

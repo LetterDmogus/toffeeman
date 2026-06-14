@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { router } from "@inertiajs/vue3";
 import { KeyRound } from "lucide-vue-next";
-import { destroy } from "@/actions/Laravel/Passkeys/Http/Controllers/PasskeyRegistrationController";
 import Heading from "@/components/Heading.vue";
 import PasskeyItem from "@/components/PasskeyItem.vue";
 import PasskeyRegister from "@/components/PasskeyRegister.vue";
@@ -18,7 +17,7 @@ withDefaults(defineProps<Props>(), {
 });
 
 const handleDelete = (id: number, onError: () => void) => {
-	router.delete(destroy.url(id), {
+	router.delete(route("passkey.destroy", id), {
 		preserveScroll: true,
 		onError,
 	});

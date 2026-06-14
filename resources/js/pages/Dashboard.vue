@@ -14,19 +14,12 @@ import {
     UtensilsCrossed,
 } from "lucide-vue-next";
 import { computed } from "vue";
-import { dashboard } from "@/routes";
-import catalog from "@/routes/catalog";
-import ops from "@/routes/ops";
-import reports from "@/routes/reports";
-import { index as attendanceIndex, kiosk as attendanceKiosk } from "@/routes/attendance";
-import * as routes from "@/routes";
-
 defineOptions({
     layout: {
         breadcrumbs: [
             {
                 title: "Dashboard",
-                href: dashboard().url,
+                href: route("dashboard"),
             },
         ],
     },
@@ -69,7 +62,7 @@ const allShortcuts = computed(() => [
     {
         label: "Kasir (POS)",
         description: "Buka sesi kasir dan proses pesanan pelanggan secara langsung.",
-        href: routes.pos().url,
+        href: route("pos"),
         icon: Monitor,
         color: "from-violet-500 to-purple-600",
         bg: "from-violet-50 to-purple-50 dark:from-violet-950/20 dark:to-purple-950/10",
@@ -80,7 +73,7 @@ const allShortcuts = computed(() => [
     {
         label: "Dapur (KDS)",
         description: "Pantau antrian masakan dan update status hidangan secara real-time.",
-        href: routes.kitchen().url,
+        href: route("kitchen"),
         icon: ChefHat,
         color: "from-orange-500 to-amber-600",
         bg: "from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/10",
@@ -91,7 +84,7 @@ const allShortcuts = computed(() => [
     {
         label: "Daftar Pesanan",
         description: "Lihat semua pesanan aktif, riwayat, dan status pembayaran.",
-        href: routes.orders().url,
+        href: route("orders"),
         icon: Receipt,
         color: "from-sky-500 to-blue-600",
         bg: "from-sky-50 to-blue-50 dark:from-sky-950/20 dark:to-blue-950/10",
@@ -102,7 +95,7 @@ const allShortcuts = computed(() => [
     {
         label: "Laporan Keuangan",
         description: "Pantau arus kas, transaksi, dan tren pemasukan harian.",
-        href: routes.reports().url,
+        href: route("reports"),
         icon: BarChart3,
         color: "from-emerald-500 to-teal-600",
         bg: "from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/10",
@@ -113,7 +106,7 @@ const allShortcuts = computed(() => [
     {
         label: "Laporan Pesanan",
         description: "Rekap pesanan harian, ekspor CSV, dan analisis performa menu.",
-        href: reports.orders().url,
+        href: route("reports.orders"),
         icon: ClipboardCheck,
         color: "from-cyan-500 to-blue-500",
         bg: "from-cyan-50 to-blue-50 dark:from-cyan-950/20 dark:to-blue-950/10",
@@ -124,7 +117,7 @@ const allShortcuts = computed(() => [
     {
         label: "Menu & Katalog",
         description: "Kelola menu, kategori, paket, promo, dan variasi hidangan.",
-        href: catalog.menu().url,
+        href: route("catalog.menu"),
         icon: UtensilsCrossed,
         color: "from-rose-500 to-pink-600",
         bg: "from-rose-50 to-pink-50 dark:from-rose-950/20 dark:to-pink-950/10",
@@ -135,7 +128,7 @@ const allShortcuts = computed(() => [
     {
         label: "Stok Bahan Baku",
         description: "Monitor bahan baku, batch, mutasi, dan notifikasi stok menipis.",
-        href: ops.ingredients().url,
+        href: route("ops.ingredients"),
         icon: Boxes,
         color: "from-lime-500 to-green-600",
         bg: "from-lime-50 to-green-50 dark:from-lime-950/20 dark:to-green-950/10",
@@ -146,7 +139,7 @@ const allShortcuts = computed(() => [
     {
         label: "Kios Absensi",
         description: "Buka kios absensi berbasis face-scan atau QR untuk karyawan.",
-        href: attendanceKiosk().url,
+        href: route("attendance.kiosk"),
         icon: Clock,
         color: "from-indigo-500 to-blue-600",
         bg: "from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/10",
@@ -157,7 +150,7 @@ const allShortcuts = computed(() => [
     {
         label: "Manajemen Absensi",
         description: "Rekap kehadiran karyawan, izin, dan data jam kerja.",
-        href: attendanceIndex().url,
+        href: route("attendance.index"),
         icon: ClipboardList,
         color: "from-fuchsia-500 to-purple-600",
         bg: "from-fuchsia-50 to-purple-50 dark:from-fuchsia-950/20 dark:to-purple-950/10",

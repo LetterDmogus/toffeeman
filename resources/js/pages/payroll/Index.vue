@@ -17,13 +17,12 @@ import {
     Wallet,
 } from "lucide-vue-next";
 import { computed, onMounted, ref, watch } from "vue";
-import payrollRoutes from "@/routes/payroll/index";
 
 defineOptions({
     layout: {
         breadcrumbs: [
             { title: "Dashboard", href: "/dashboard" },
-            { title: "Penggajian", href: payrollRoutes.index().url },
+            { title: "Penggajian", href: route("payroll.index") },
         ],
     },
 });
@@ -120,7 +119,7 @@ function nextMonth() {
 
 // ── Actions ────────────────────────────────────────────────────────────────────
 function openSlip(id: number) {
-    router.visit(payrollRoutes.show(id).url);
+    router.visit(route("payroll.show", id));
 }
 
 onMounted(fetchPayrolls);
@@ -176,7 +175,7 @@ function onSearch(e: Event) {
 
                 <Link
                     v-if="canManage"
-                    :href="payrollRoutes.create().url"
+                    :href="route('payroll.create')"
                     class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
                 >
                     <Plus class="h-4 w-4" />
@@ -195,7 +194,7 @@ function onSearch(e: Event) {
                 </div>
                 <div class="flex items-center gap-2">
                     <a
-                        :href="payrollRoutes.exportReport({ year: reportYear }).url"
+                        :href="route('payroll.export-report', { year: reportYear })"
                         class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                     >
                         <Download class="h-3.5 w-3.5" />
@@ -415,7 +414,7 @@ function onSearch(e: Event) {
                     </div>
                     <div class="flex items-center gap-2">
                         <a
-                            :href="payrollRoutes.exportList({ month: currentMonth, year: currentYear, status: statusFilter, search: searchQuery }).url"
+                            :href="route('payroll.export-list', { month: currentMonth, year: currentYear, status: statusFilter, search: searchQuery })"
                             class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
                         >
                             <Download class="h-3.5 w-3.5" />
@@ -506,7 +505,7 @@ function onSearch(e: Event) {
                                 </td>
                                 <td class="px-6 py-4 text-right">
                                     <Link
-                                        :href="payrollRoutes.show(p.id).url"
+                                        :href="route('payroll.show', p.id)"
                                         class="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline dark:text-brand-400"
                                         @click.stop
                                     >

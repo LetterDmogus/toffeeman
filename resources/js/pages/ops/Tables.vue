@@ -2,14 +2,13 @@
 import { ref } from "vue";
 import type { Column, FormField } from "@/components/CRUDTable.vue";
 import CRUDTable from "@/components/CRUDTable.vue";
-import ops from "@/routes/ops";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Operasional", href: "#" },
-			{ title: "Meja", href: ops.tables().url },
+			{ title: "Meja", href: route("ops.tables") },
 		],
 	},
 });

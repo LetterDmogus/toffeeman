@@ -45,79 +45,71 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import * as routes from "@/routes";
-import catalog from "@/routes/catalog";
-import ops from "@/routes/ops";
-import team from "@/routes/team";
-import siteSettings from "@/routes/site-settings";
-import reports from "@/routes/reports";
-import { kiosk as attendanceKiosk, index as attendanceIndex } from "@/routes/attendance";
-import payrollRoutes from "@/routes/payroll/index";
 import type { NavItem } from "@/types";
 
 const catalogNavItems: NavItem[] = [
-	{ title: "Menu & Varian", href: catalog.menu().url, icon: UtensilsCrossed },
-	{ title: "Almanak Resep", href: catalog.recipeBook().url, icon: ChefHat },
-	{ title: "Kategori Menu", href: catalog.categories().url, icon: Tags },
-	{ title: "Paket Menu", href: catalog.packages().url, icon: Gift },
-	{ title: "Extra Topping", href: catalog.addOns().url, icon: PlusCircle },
-	{ title: "Sistem Promo", href: catalog.promos().url, icon: TicketPercent },
+	{ title: "Menu & Varian", href: route("catalog.menu"), icon: UtensilsCrossed },
+	{ title: "Almanak Resep", href: route("catalog.recipe-book"), icon: ChefHat },
+	{ title: "Kategori Menu", href: route("catalog.categories"), icon: Tags },
+	{ title: "Paket Menu", href: route("catalog.packages"), icon: Gift },
+	{ title: "Extra Topping", href: route("catalog.add-ons"), icon: PlusCircle },
+	{ title: "Sistem Promo", href: route("catalog.promos"), icon: TicketPercent },
 ];
 
 const opsIngredientsNavItems: NavItem[] = [
-	{ title: "Bahan Baku", href: ops.ingredients().url, icon: Carrot },
+	{ title: "Bahan Baku", href: route("ops.ingredients"), icon: Carrot },
 	{
 		title: "Kategori Bahan",
-		href: ops.ingredientCategories().url,
+		href: route("ops.ingredient-categories"),
 		icon: FolderClosed,
 	},
-	{ title: "Batch Bahan", href: ops.ingredientBatches().url, icon: History },
+	{ title: "Batch Bahan", href: route("ops.ingredient-batches"), icon: History },
 	{
 		title: "Mutasi Bahan",
-		href: ops.ingredientMutations().url,
+		href: route("ops.ingredient-mutations"),
 		icon: ArrowRightLeft,
 	},
 ];
 
 const opsEquipmentNavItems: NavItem[] = [
-	{ title: "Meja", href: ops.tables().url, icon: Table2 },
-	{ title: "Barang / Peralatan", href: ops.inventory().url, icon: Boxes },
+	{ title: "Meja", href: route("ops.tables"), icon: Table2 },
+	{ title: "Barang / Peralatan", href: route("ops.inventory"), icon: Boxes },
 	{
 		title: "Kategori Barang",
-		href: ops.inventoryCategories().url,
+		href: route("ops.inventory-categories"),
 		icon: Layers,
 	},
 	{
 		title: "Barang Masuk",
-		href: ops.inventoryIns().url,
+		href: route("ops.inventory-ins"),
 		icon: ArrowDownToLine,
 	},
 	{
 		title: "Barang Keluar",
-		href: ops.inventoryOuts().url,
+		href: route("ops.inventory-outs"),
 		icon: ArrowUpFromLine,
 	},
 	{
 		title: "Stok Opname",
-		href: ops.inventoryOpnames().url,
+		href: route("ops.inventory-opnames"),
 		icon: ClipboardCheck,
 	},
 	{
 		title: "Mutasi Stok",
-		href: ops.inventoryMutations().url,
+		href: route("ops.inventory-mutations"),
 		icon: ArrowRightLeft,
 	},
 ];
 
 const teamNavItems: NavItem[] = [
-	{ title: "Karyawan", href: team.employees().url, icon: Users },
-	{ title: "Jabatan", href: team.positions().url, icon: Contact },
-	{ title: "User / Pengguna", href: team.users().url, icon: ShieldCheck },
-	{ title: "Hak Akses Role", href: team.rolesPermissions().url, icon: ShieldCheck },
+	{ title: "Karyawan", href: route("team.employees"), icon: Users },
+	{ title: "Jabatan", href: route("team.positions"), icon: Contact },
+	{ title: "User / Pengguna", href: route("team.users"), icon: ShieldCheck },
+	{ title: "Hak Akses Role", href: route("team.roles-permissions"), icon: ShieldCheck },
 ];
 
 const siteSettingsNavItems: NavItem[] = [
-	{ title: "IP & Lokasi", href: siteSettings.ipLocation.edit().url, icon: Settings },
+	{ title: "IP & Lokasi", href: route("site-settings.ip-location.edit"), icon: Settings },
 	{ title: "Database", href: "/site-settings/database", icon: Database },
 ];
 
@@ -139,16 +131,16 @@ const searchQuery = ref("");
 
 const mainNavItems = computed(() => {
 	const items = [
-		{ title: "Dashboard", href: routes.dashboard().url, icon: LayoutGrid, permission: null },
-		{ title: "Kasir (POS)", href: routes.pos().url, icon: Monitor, permission: "pos-access" },
-		{ title: "Dapur (KDS)", href: routes.kitchen().url, icon: ChefHat, permission: "kitchen-access" },
-		{ title: "Daftar Pesanan", href: routes.orders().url, icon: Receipt, permission: "orders-access" },
-		{ title: "Kios Absensi", href: attendanceKiosk().url, icon: Clock, permission: "kiosk-attendance-access" },
-		{ title: "Manajemen Absensi", href: attendanceIndex().url, icon: ClipboardList, permission: "attendance-management" },
-		{ title: "Laporan Keuangan", href: routes.reports().url, icon: BarChart3, permission: "view-reports" },
-		{ title: "Laporan Pesanan", href: reports.orders().url, icon: ClipboardCheck, permission: "view-reports" },
-		{ title: "Biaya Operasional", href: ops.expenses().url, icon: Wallet, permission: "view-reports" },
-		{ title: "Penggajian", href: payrollRoutes.index().url, icon: Wallet, permission: "payroll-access" },
+		{ title: "Dashboard", href: route("dashboard"), icon: LayoutGrid, permission: null },
+		{ title: "Kasir (POS)", href: route("pos"), icon: Monitor, permission: "pos-access" },
+		{ title: "Dapur (KDS)", href: route("kitchen"), icon: ChefHat, permission: "kitchen-access" },
+		{ title: "Daftar Pesanan", href: route("orders"), icon: Receipt, permission: "orders-access" },
+		{ title: "Kios Absensi", href: route("attendance.kiosk"), icon: Clock, permission: "kiosk-attendance-access" },
+		{ title: "Manajemen Absensi", href: route("attendance.index"), icon: ClipboardList, permission: "attendance-management" },
+		{ title: "Laporan Keuangan", href: route("reports"), icon: BarChart3, permission: "view-reports" },
+		{ title: "Laporan Pesanan", href: route("reports.orders"), icon: ClipboardCheck, permission: "view-reports" },
+		{ title: "Biaya Operasional", href: route("ops.expenses"), icon: Wallet, permission: "view-reports" },
+		{ title: "Penggajian", href: route("payroll.index"), icon: Wallet, permission: "payroll-access" },
 	];
 	return items.filter(item => !item.permission || hasPermission(item.permission));
 });
@@ -225,7 +217,7 @@ const filteredSiteSettingsItems = computed(() => {
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                        <Link :href="routes.dashboard().url">
+                        <Link :href="route('dashboard')">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>

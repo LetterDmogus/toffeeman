@@ -4,14 +4,13 @@ import { onMounted, ref } from "vue";
 import type { Column, FormField } from "@/components/CRUDTable.vue";
 import CRUDTable from "@/components/CRUDTable.vue";
 import { Button } from "@/components/ui/button";
-import ops from "@/routes/ops";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Operasional", href: "#" },
-			{ title: "Inventaris", href: ops.inventory().url },
+			{ title: "Inventaris", href: route("ops.inventory") },
 		],
 	},
 });

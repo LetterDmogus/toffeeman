@@ -13,14 +13,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import ops from "@/routes/ops";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Operasional", href: "#" },
-			{ title: "Barang / Peralatan", href: ops.inventory().url },
+			{ title: "Barang / Peralatan", href: route("ops.inventory") },
 			{ title: "Mutasi Stok", href: "#" },
 		],
 	},

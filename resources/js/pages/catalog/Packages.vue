@@ -14,14 +14,13 @@ import type { Column, FormField } from "@/components/CRUDTable.vue";
 import CRUDTable from "@/components/CRUDTable.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import catalog from "@/routes/catalog";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Katalog Produk", href: "#" },
-			{ title: "Paket Menu", href: catalog.packages().url },
+			{ title: "Paket Menu", href: route("catalog.packages") },
 		],
 	},
 });

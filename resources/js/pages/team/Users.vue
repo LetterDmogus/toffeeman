@@ -2,14 +2,13 @@
 import { onMounted, ref } from "vue";
 import type { Column, FormField } from "@/components/CRUDTable.vue";
 import CRUDTable from "@/components/CRUDTable.vue";
-import team from "@/routes/team";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Manajemen Tim", href: "#" },
-			{ title: "User / Pengguna", href: team.users().url },
+			{ title: "User / Pengguna", href: route("team.users") },
 		],
 	},
 });

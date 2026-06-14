@@ -3,7 +3,6 @@ import { Head } from "@inertiajs/vue3";
 import { onMounted, ref } from "vue";
 import type { Column, FormField } from "@/components/CRUDTable.vue";
 import CRUDTable from "@/components/CRUDTable.vue";
-import team from "@/routes/team";
 import { ShieldCheck, Loader2, Lock } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +18,7 @@ defineOptions({
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Manajemen Tim", href: "#" },
-			{ title: "Hak Akses Role", href: team.rolesPermissions().url },
+			{ title: "Hak Akses Role", href: route("team.roles-permissions") },
 		],
 	},
 });

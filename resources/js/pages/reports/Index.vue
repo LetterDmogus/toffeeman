@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head } from "@inertiajs/vue3";
 import { ref } from "vue";
-import { dashboard } from "@/routes";
 import DailyReport from "./components/DailyReport.vue";
 import MonthlyReport from "./components/MonthlyReport.vue";
 import YearlyReport from "./components/YearlyReport.vue";
@@ -9,7 +8,7 @@ import YearlyReport from "./components/YearlyReport.vue";
 defineOptions({
 	layout: {
 		breadcrumbs: [
-			{ title: "Dashboard", href: dashboard().url },
+			{ title: "Dashboard", href: route("dashboard") },
 			{ title: "Laporan Keuangan", href: "#" },
 		],
 	},

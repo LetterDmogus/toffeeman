@@ -2,7 +2,6 @@
 import { ref } from "vue";
 import type { Column, FormField } from "@/components/CRUDTable.vue";
 import CRUDTable from "@/components/CRUDTable.vue";
-import ops from "@/routes/ops";
 import { Eye } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +17,7 @@ defineOptions({
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Operasional", href: "#" },
-			{ title: "Biaya Operasional", href: ops.expenses().url },
+			{ title: "Biaya Operasional", href: route("ops.expenses") },
 		],
 	},
 });

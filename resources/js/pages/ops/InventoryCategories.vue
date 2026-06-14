@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import type { Column, FormField } from "@/components/CRUDTable.vue";
 import CRUDTable from "@/components/CRUDTable.vue";
-import ops from "@/routes/ops";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Operasional", href: "#" },
-			{ title: "Kategori Barang", href: ops.inventoryCategories().url },
+			{ title: "Kategori Barang", href: route("ops.inventory-categories") },
 		],
 	},
 });

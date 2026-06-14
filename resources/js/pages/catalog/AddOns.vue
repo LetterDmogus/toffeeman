@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import type { Column, FormField } from "@/components/CRUDTable.vue";
 import CRUDTable from "@/components/CRUDTable.vue";
-import catalog from "@/routes/catalog";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Katalog Produk", href: "#" },
-			{ title: "Extra Topping", href: catalog.addOns().url },
+			{ title: "Extra Topping", href: route("catalog.add-ons") },
 		],
 	},
 });

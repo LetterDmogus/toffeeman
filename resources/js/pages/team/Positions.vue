@@ -2,7 +2,6 @@
 import { onMounted, ref } from "vue";
 import type { Column, FormField } from "@/components/CRUDTable.vue";
 import CRUDTable from "@/components/CRUDTable.vue";
-import team from "@/routes/team";
 import { ShieldCheck, Loader2 } from "lucide-vue-next";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +17,7 @@ defineOptions({
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Manajemen Tim", href: "#" },
-			{ title: "Jabatan", href: team.positions().url },
+			{ title: "Jabatan", href: route("team.positions") },
 		],
 	},
 });

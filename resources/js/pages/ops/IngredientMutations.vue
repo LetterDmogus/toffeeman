@@ -6,14 +6,13 @@ import CRUDTable from "@/components/CRUDTable.vue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import ops from "@/routes/ops";
 
 defineOptions({
 	layout: {
 		breadcrumbs: [
 			{ title: "Dashboard", href: "/dashboard" },
 			{ title: "Operasional", href: "#" },
-			{ title: "Bahan Baku", href: ops.ingredients().url },
+			{ title: "Bahan Baku", href: route("ops.ingredients") },
 			{ title: "Mutasi Bahan", href: "#" },
 		],
 	},
